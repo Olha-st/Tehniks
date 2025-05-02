@@ -18,9 +18,10 @@ class OrdersTab(QWidget):
         self.create_button.clicked.connect(self.open_order_form)
         button_layout.addWidget(self.create_button)
 
-        self.view_button = QPushButton("Переглянути деталі")
-        # self.view_button.clicked.connect(self.handle_view_order)
-        button_layout.addWidget(self.view_button)
+        self.delete_button = QPushButton("Видалити замовлення")
+        self.delete_button.clicked.connect(self.delete_order)
+        button_layout.addWidget(self.delete_button)
+
 
         self.layout.addLayout(button_layout)
 
@@ -30,20 +31,6 @@ class OrdersTab(QWidget):
         self.table.setHorizontalHeaderLabels(["ID", "Клієнт", "Дата", "Статус", ""])
         self.table.cellDoubleClicked.connect(self.show_order_details_dialog)
         self.layout.addWidget(self.table)
-
-         # Лейбли для відображення деталей замовлення
-        # self.base_amount_label = QLabel("Сума без знижки:")
-        # self.discount_label = QLabel("Знижка:")
-        # self.total_amount_label = QLabel("До оплати:")
-        
-        # Додаємо лейбли до основного розташування
-        # self.layout.addWidget(self.base_amount_label)
-        # self.layout.addWidget(self.discount_label)
-        # self.layout.addWidget(self.total_amount_label)
-
-        # Встановлюємо основне розташування
-
-
 
         self.setLayout(self.layout)
         self.load_data()
@@ -100,8 +87,6 @@ class OrdersTab(QWidget):
 
         add_button = QPushButton("Додати товар")
         add_button.clicked.connect(self.add_product_to_order)
-
-
 
 
         self.products_table = QTableWidget()
@@ -188,33 +173,6 @@ class OrdersTab(QWidget):
         self.load_data()
 
 
-
-
-    # def show_order_details(self, row, column):
-    #     order_id_item = self.table.item(row, 0)
-    #     if order_id_item is None:
-    #         return
-    #     order_id = int(order_id_item.text())  # Перетворюємо ID замовлення на ціле число
-
-    #     conn = get_connection()
-    #     cur = conn.cursor()
-    #     cur.execute("""
-    #         SELECT o.base_amount, o.discount_value, o.total_amount
-    #         FROM orders o
-    #         WHERE o.id = ?
-    #     """, (order_id,))
-    #     result = cur.fetchone()
-    #     conn.close()
-
-    #     if result:
-    #         base_amount, discount_value, total_amount = result
-    #         discount_str = f"{discount_value}%"
-    #         self.base_amount_label.setText(f"Сума без знижки: {base_amount} грн")
-    #         self.discount_label.setText(f"Знижка: {discount_str}")
-    #         self.total_amount_label.setText(f"До оплати: {total_amount} грн")
-
-    #         print(f"base: {base_amount}, discount: {discount_str}, total: {total_amount}")
-
     def show_order_details_dialog(self, order_id):
         conn = get_connection()
         cur = conn.cursor()
@@ -276,14 +234,8 @@ class OrdersTab(QWidget):
         dialog.exec_()
 
 
+    
 
-    # def handle_view_order(self):
-    #     selected_items = self.table.selectedItems()
-    #     if not selected_items:
-    #         QMessageBox.warning(self, "Увага", "Будь ласка, виберіть замовлення.")
-    #         return
-    #     row = self.table.currentRow()
-    #     self.show_order_details(row, 0)
 
     def open_payment_dialog(self, order_id, max_amount, orders_tab):
         dialog = QDialog()
@@ -305,9 +257,6 @@ class OrdersTab(QWidget):
         self.base_amount_label = QLabel(f"Сума без знижки: ₴{base_amount:.2f}")
         self.discount_label = QLabel(f"Знижка: {discount_value}%")
         self.total_amount_label = QLabel(f"До оплати: ₴{total_amount:.2f}")
-
-
-
 
         layout.addRow(self.base_amount_label)
         layout.addRow(self.discount_label)
@@ -331,8 +280,43 @@ class OrdersTab(QWidget):
         layout.addRow("Метод:", method_box)
         layout.addRow(save_btn)
 
+
         dialog.setLayout(layout)
         dialog.exec_()
 
 
+    def get_selected_order_id(self):
+        selected_row = self.table.currentRow()
+        if selected_row == -1:
+            QMessageBox.warning(self, "Помилка", "Оберіть замовлення зі списку.")
+            return None
+        return int(self.table.item(selected_row, 0).text())
+
+
+    def delete_order(self):
+        order_id = self.get_selected_order_id()
+        if order_id is None:
+            return
+
+        confirm = QMessageBox.question(
+            self, "Підтвердження", f"Ви впевнені, що хочете видалити замовлення №{order_id}?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if confirm == QMessageBox.Yes:
+            conn = get_connection()
+            cur = conn.cursor()
+
+            # Видалити товари замовлення
+            cur.execute("DELETE FROM order_items WHERE order_id = ?", (order_id,))
+            # Видалити саме замовлення
+            cur.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+            conn.commit()
+            conn.close()
+
+            QMessageBox.information(self, "Успіх", "Замовлення видалено.")
+            self.load_data()
+
+            if self.payments_tab:
+                self.payments_tab.load_data()
 

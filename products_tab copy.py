@@ -1,15 +1,13 @@
 # вкладка "Товари"
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QComboBox,
-    QTableWidgetItem, QMessageBox, QAbstractItemView, QLineEdit, QFileDialog
+    QTableWidgetItem, QMessageBox, QAbstractItemView, QLineEdit
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QDialog
 from product_dialog import ProductDialog
 from database import get_all_products, add_product, update_product, delete_product, get_category_names
 import sqlite3
-from functools import partial
 
 
 class ProductsTab(QWidget):
@@ -61,7 +59,7 @@ class ProductsTab(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Назва", "Ціна", "Кількість", "Категорія","Фото"
+            "ID", "Назва", "Ціна", "Кількість", "Категорія ID", "Фото"
         ])
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.layout.addWidget(self.table)
@@ -90,16 +88,29 @@ class ProductsTab(QWidget):
         # Фільтрація
         filtered_products = []
         for prod in products:
+            # prod[3] — ціна, prod[4] — кількість, prod[5] — id категорії
+
+            # Фільтр за категорією
             if selected_category != "Усі":
                 cat_name = category_names.get(prod[5], "Невідомо")
                 if cat_name != selected_category:
                     continue
 
-            if min_price and float(prod[3]) < float(min_price):
-                continue
+            # Фільтр за мінімальною ціною
+            if min_price:
+                try:
+                    if float(prod[3]) < float(min_price):
+                        continue
+                except ValueError:
+                    pass
 
-            if max_price and float(prod[3]) > float(max_price):
-                continue
+            # Фільтр за максимальною ціною
+            if max_price:
+                try:
+                    if float(prod[3]) > float(max_price):
+                        continue
+                except ValueError:
+                    pass
 
             filtered_products.append(prod)
 
@@ -116,155 +127,14 @@ class ProductsTab(QWidget):
             self.table.setItem(row, 2, QTableWidgetItem(str(prod[3])))  # Ціна
             self.table.setItem(row, 3, QTableWidgetItem(str(prod[4])))  # Кількість
 
+            # Назва категорії
             category_name = category_names.get(prod[5], "Невідомо")
             self.table.setItem(row, 4, QTableWidgetItem(category_name))
 
-            # self.table.setItem(row, 5, QTableWidgetItem(prod[2]))  # Опис
-
-            # Кнопки: одна "Додати фото" + одна "Переглянути фото"
-            image_buttons_layout = QHBoxLayout()
-
-            # Кнопка додавання фото
-            add_photo_button = QPushButton("Додати фото")
-            add_photo_button.clicked.connect(lambda _, product_id=prod[0]: self.add_product_image(product_id))
-            image_buttons_layout.addWidget(add_photo_button)
-
-            # Кнопка перегляду фото
-            view_photos_button = QPushButton("Переглянути фото")
-            view_photos_button.clicked.connect(lambda _, product_id=prod[0]: self.view_images_slider(product_id))
-            image_buttons_layout.addWidget(view_photos_button)
-
-            image_widget = QWidget()
-            image_widget.setLayout(image_buttons_layout)
-            self.table.setCellWidget(row, 5, image_widget)
-
-    def view_images_slider(self, product_id):
-        images = self.get_product_images(product_id)
-        if not images:
-            QMessageBox.information(self, "Фото", "Для цього товару немає фото.")
-            return
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Перегляд фото")
-        dialog.setModal(True)
-        layout = QVBoxLayout(dialog)
-
-        image_label = QLabel()
-        image_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(image_label)
-
-        index_label = QLabel()
-        index_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(index_label)
-
-        current_index = [0]  # Змінна в списку, щоб передавати по посиланню
-
-        def update_image():
-            pixmap = QPixmap(images[current_index[0]])
-            if pixmap.isNull():
-                image_label.setText("Не вдалося завантажити зображення")
-            else:
-                image_label.setPixmap(pixmap.scaled(400, 400, Qt.KeepAspectRatio))
-            index_label.setText(f"Фото {current_index[0]+1} з {len(images)}")
-
-        def show_next():
-            current_index[0] = (current_index[0] + 1) % len(images)
-            update_image()
-
-        def show_previous():
-            current_index[0] = (current_index[0] - 1) % len(images)
-            update_image()
-
-        buttons_layout = QHBoxLayout()
-        prev_button = QPushButton("← Назад")
-        prev_button.clicked.connect(show_previous)
-        buttons_layout.addWidget(prev_button)
-
-        next_button = QPushButton("Вперед →")
-        next_button.clicked.connect(show_next)
-        buttons_layout.addWidget(next_button)
-
-        layout.addLayout(buttons_layout)
-
-        update_image()  # Показати перше фото
-
-        dialog.exec()
-
-
-
-
-    def add_product_image(self, product_id):
-        # Відкриваємо діалогове вікно для вибору файлу
-        file_dialog = QFileDialog()
-        file_dialog.setFileMode(QFileDialog.ExistingFiles)
-        file_dialog.setNameFilter("Images (*.png *.jpg *.jpeg *.bmp *.gif)")
-        file_dialog.setViewMode(QFileDialog.List)
-
-        if file_dialog.exec_():
-            file_paths = file_dialog.selectedFiles()  # Отримуємо вибрані файли
-            if file_paths:
-                image_path = file_paths[0]  # Беремо перше фото (якщо їх кілька, можна додати логіку для кількох)
-                self.save_image_to_database(product_id, image_path)  # Викликаємо метод для збереження фото в базу даних
-                
-                # Повідомлення про успішне додавання
-                QMessageBox.information(self, "Успіх", "Фото додано успішно!")
-                self.load_data()
-            else:
-                QMessageBox.warning(self, "Помилка", "Не вибрано жодного файлу.")
-
-
-    def get_product_images(self, product_id):
-        # Підключення до бази даних з використанням контекстного менеджера для автоматичного закриття з'єднання
-        with sqlite3.connect('appliance_store.db') as conn:
-            cursor = conn.cursor()
-            
-            # Виконання запиту для отримання всіх фото для конкретного товару
-            cursor.execute("SELECT image_path FROM product_photos WHERE product_id = ?", (product_id,))
-            
-            # Отримуємо всі результати запиту
-            images = cursor.fetchall()
-
-        # Повертаємо список шляхів до фото
-        return [image[0] for image in images]
-
-    def show_image(self, image_path):
-        if not image_path:
-            QMessageBox.warning(self, "Фото", "Фото не вказано.")
-            return
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Фото товару")
-        layout = QVBoxLayout()
-        label = QLabel()
-
-        pixmap = QPixmap(image_path)
-        if pixmap.isNull():
-            label.setText("Не вдалося завантажити зображення.")
-        else:
-            label.setPixmap(pixmap.scaled(400, 400, aspectRatioMode=1))
-
-        layout.addWidget(label)
-        dialog.setLayout(layout)
-        dialog.exec_()
-
-    def save_image_to_database(self, product_id, image_path):
-        # Підключення до бази даних
-        with sqlite3.connect('appliance_store.db') as conn:
-            cursor = conn.cursor()
-
-            # Виконання SQL-запиту для вставки нового фото для товару
-            cursor.execute("""
-                INSERT INTO product_photos (product_id, image_path) 
-                VALUES (?, ?)
-            """, (product_id, image_path))
-
-            # Збереження змін
-            conn.commit()
-
-
-
-    
-
+            # Кнопка "Показати" фото
+            show_button = QPushButton("Показати")
+            show_button.clicked.connect(lambda _, path=prod[6]: self.show_image(path))
+            self.table.setCellWidget(row, 5, show_button)
 
 
     def get_selected_product(self):
