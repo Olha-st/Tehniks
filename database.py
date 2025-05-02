@@ -160,14 +160,23 @@ def get_all_clients_with_stats():
 
     cur.execute("""
         SELECT 
-            c.id, c.name, c.phone, c.email, c.address,
+            c.id,
+            c.name,
+            c.phone,
+            c.email,
+            c.address,
             COUNT(o.id) AS order_count,
-            COALESCE(SUM(o.total_amount), 0) AS total_amount,
-            c.discount_level,
+            COALESCE(SUM(o.total_amount), 0) AS total_spent,
+            -- беремо останню знижку або середню, залежно від потреби
+            COALESCE((SELECT discount_value FROM orders WHERE customer_id = c.id ORDER BY id DESC LIMIT 1), 0) AS last_discount,
             c.is_regular
-        FROM customers c
-        LEFT JOIN orders o ON c.id = o.customer_id
-        GROUP BY c.id
+        FROM 
+            customers c
+        LEFT JOIN 
+            orders o ON c.id = o.customer_id
+        GROUP BY 
+            c.id
+
     """)
     clients = cur.fetchall()
     conn.close()
@@ -231,93 +240,54 @@ def get_products():
     cur.execute("SELECT id, name, price, quantity FROM products")
     return cur.fetchall()
 
-# def add_order(customer_id, order_date):
-#     conn = get_connection()
-#     cur = conn.cursor()
-
-#     try:
-#         # Створення нового замовлення з початковим статусом
-#         cur.execute("""
-#             INSERT INTO orders (customer_id, order_date, status)
-#             VALUES (?, ?, 'Очікує підтвердження')
-#         """, (customer_id, order_date))
-#         conn.commit()
-
-#         order_id = cur.lastrowid  # Отримуємо ID щойно створеного замовлення
-
-#         # Формування назви замовлення
-#         order_title = f"order_{order_date.replace('-', '')}_{order_id}"
-
-#         # Оновлення назви
-#         cur.execute("UPDATE orders SET title = ? WHERE id = ?", (order_title, order_id))
-#         conn.commit()
-
-#         # Оновити знижку і статус клієнта
-#         cur.execute("""
-#             SELECT COUNT(id), COALESCE(SUM(total_amount), 0)
-#             FROM orders
-#             WHERE customer_id = ?
-#         """, (customer_id,))
-#         order_count, total_amount = cur.fetchone()
-
-#         # Визначення рівня знижки
-#         if total_amount >= 10000:
-#             discount = '15%'
-#         elif total_amount >= 5000:
-#             discount = '10%'
-#         elif total_amount >= 1000:
-#             discount = '5%'
-#         else:
-#             discount = '0%'
-
-#         # Чи постійний клієнт
-#         is_regular = 1 if order_count >= 5 else 0
-
-#         # Оновлення інформації клієнта
-#         cur.execute("""
-#             UPDATE customers SET discount_level = ?, is_regular = ? WHERE id = ?
-#         """, (discount, is_regular, customer_id))
-#         conn.commit()
-
-#         return order_id
-
-#     except Exception as e:
-#         conn.rollback()
-#         print(f"Помилка при додаванні замовлення: {e}")
-#         return None
-#     finally:
-#         conn.close()
-
 
 def add_order(customer_id, order_date, base_amount):
     conn = get_connection()
     cur = conn.cursor()
 
-    # Отримуємо поточну знижку клієнта
-    cur.execute("SELECT discount_level FROM customers WHERE id = ?", (customer_id,))
-    discount_str = cur.fetchone()[0]  # Наприклад: '10%'
-    discount_value = int(discount_str.replace('%', ''))
+    # Отримуємо загальну кількість замовлень і суму попередніх замовлень клієнта
+    cur.execute("SELECT COUNT(*), COALESCE(SUM(total_amount), 0) FROM orders WHERE customer_id = ?", (customer_id,))
+    order_count, total_spent = cur.fetchone()
+
+    # Знижка залежно від суми попередніх замовлень
+    if total_spent >= 100000:
+        discount_percent = 8
+    elif total_spent >= 55000:
+        discount_percent = 5
+    elif total_spent >= 25000:
+        discount_percent = 3
+    else:
+        discount_percent = 0
+
+    # Постійний клієнт (від 3-х замовлень) — +1.5% до знижки
+    is_regular = 1 if order_count >= 3 else 0
+    if is_regular:
+        discount_percent += 1.5
 
     # Розрахунок остаточної суми зі знижкою
-    total_amount = base_amount * (1 - discount_value / 100)
+    total_amount = round(base_amount * (1 - discount_percent / 100), 2)
 
-    # Створення нового замовлення з базовою сумою та знижкою
+    # Створення нового замовлення
     cur.execute("""
         INSERT INTO orders (customer_id, order_date, status, total_amount, base_amount, discount_value)
         VALUES (?, ?, 'Очікує підтвердження', ?, ?, ?)
-    """, (customer_id, order_date, total_amount, base_amount, discount_value))
+    """, (customer_id, order_date, total_amount, base_amount, discount_percent))
     conn.commit()
 
     order_id = cur.lastrowid
 
-    # Формуємо назву замовлення
+    # Назва замовлення
     order_title = f"order_{order_date}_{order_id}"
     cur.execute("UPDATE orders SET title = ? WHERE id = ?", (order_title, order_id))
+
+    # Оновлення статусу постійного клієнта
+    cur.execute("UPDATE customers SET is_regular = ? WHERE id = ?", (is_regular, customer_id))
     conn.commit()
 
     conn.close()
-
     return order_id
+
+
 
 
 
@@ -375,13 +345,15 @@ def get_all_payments():
     return cur.fetchall()
 
 def add_payment(order_id, payment_date, amount, method):
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_connection("appliance_store.db")
     cur = conn.cursor()
     cur.execute("""
-    INSERT INTO payments (order_id, payment_date, amount, method)
-    VALUES (?, ?, ?, ?)
+        INSERT INTO payments (order_id, payment_date, amount, method)
+        VALUES (?, ?, ?, ?)
     """, (order_id, payment_date, amount, method))
     conn.commit()
+    conn.close()
+
 
 def get_orders_for_payment():
     conn = sqlite3.connect(DB_NAME)
@@ -390,24 +362,28 @@ def get_orders_for_payment():
     return cur.fetchall()
 
 def get_all_orders_with_total_and_paid():
-    conn = get_connection()
+    conn = get_connection("appliance_store.db")
     cur = conn.cursor()
     cur.execute("""
         SELECT 
-            orders.id,
-            orders.title,
-            customers.name,
-            orders.order_date,
-            orders.status,
-            IFNULL(SUM(order_items.quantity * order_items.unit_price), 0) AS total,
-            IFNULL((SELECT SUM(amount) FROM payments WHERE payments.order_id = orders.id), 0) AS paid
-        FROM orders
-        LEFT JOIN customers ON orders.customer_id = customers.id
-        LEFT JOIN order_items ON orders.id = order_items.order_id
-        GROUP BY orders.id
-        ORDER BY orders.order_date DESC
+            o.id AS order_id,
+            o.title,
+            c.name AS client_name,
+            o.order_date AS date,
+            o.status,
+            o.base_amount,
+            o.discount_value,
+            o.total_amount,
+            IFNULL(SUM(p.amount), 0) AS paid
+        FROM orders o
+        JOIN customers c ON o.customer_id = c.id
+        LEFT JOIN payments p ON o.id = p.order_id
+        GROUP BY o.id
     """)
-    return cur.fetchall()
+    orders = cur.fetchall()
+    conn.close()
+    return orders
+
 
 
 

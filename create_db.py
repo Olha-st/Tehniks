@@ -96,6 +96,18 @@ CREATE TABLE IF NOT EXISTS order_items (
 );
 """)
 
+# фото
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS product_photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    image_path TEXT NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+)
+""")
+conn.commit()
+
+
 
 # Збереження змін і закриття з'єднання
 conn.commit()

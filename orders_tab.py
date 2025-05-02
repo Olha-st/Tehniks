@@ -1,5 +1,9 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QPushButton, QHBoxLayout, QComboBox, QLabel, QLineEdit, QSpinBox, QTableWidgetItem, QMessageBox, QDialog, QFormLayout
+from PyQt5.QtWidgets import QWidget,QDoubleSpinBox, QVBoxLayout, QTableWidget, QPushButton, QHBoxLayout, QComboBox, QLabel, QLineEdit, QSpinBox, QTableWidgetItem, QMessageBox, QDialog, QFormLayout
 from database import get_all_orders, add_order, get_customers, get_products, add_order_item, get_order_items_by_order_id, update_product_quantity
+from database import get_connection, get_all_orders_with_total_and_paid
+from functools import partial
+
+
 
 class OrdersTab(QWidget):
     def __init__(self, payments_tab=None, customers_tab=None):
@@ -15,17 +19,29 @@ class OrdersTab(QWidget):
         button_layout.addWidget(self.create_button)
 
         self.view_button = QPushButton("Переглянути деталі")
-        self.view_button.clicked.connect(self.handle_view_order)
+        # self.view_button.clicked.connect(self.handle_view_order)
         button_layout.addWidget(self.view_button)
 
         self.layout.addLayout(button_layout)
 
         # Таблиця замовлень
         self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["ID", "Клієнт", "Дата", "Статус"])
-        self.table.cellDoubleClicked.connect(self.show_order_details)
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["ID", "Клієнт", "Дата", "Статус", ""])
+        self.table.cellDoubleClicked.connect(self.show_order_details_dialog)
         self.layout.addWidget(self.table)
+
+         # Лейбли для відображення деталей замовлення
+        # self.base_amount_label = QLabel("Сума без знижки:")
+        # self.discount_label = QLabel("Знижка:")
+        # self.total_amount_label = QLabel("До оплати:")
+        
+        # Додаємо лейбли до основного розташування
+        # self.layout.addWidget(self.base_amount_label)
+        # self.layout.addWidget(self.discount_label)
+        # self.layout.addWidget(self.total_amount_label)
+
+        # Встановлюємо основне розташування
 
 
 
@@ -33,14 +49,31 @@ class OrdersTab(QWidget):
         self.load_data()
 
     def load_data(self):
-        self.table.setRowCount(0)
-        orders = get_all_orders()
+        conn = get_connection()
+        cur = conn.cursor()
+
+        # Отримуємо дані з бази даних
+        cur.execute("""
+            SELECT o.id, c.name, o.order_date, o.status
+            FROM orders o
+            JOIN customers c ON o.customer_id = c.id
+        """)
+        orders = cur.fetchall()
+        conn.close()
+
+        # Оновлюємо таблицю з замовленнями
         self.table.setRowCount(len(orders))
         for row, order in enumerate(orders):
-            self.table.setItem(row, 0, QTableWidgetItem(str(order[0])))
-            self.table.setItem(row, 1, QTableWidgetItem(order[1]))
-            self.table.setItem(row, 2, QTableWidgetItem(order[2]))
-            self.table.setItem(row, 3, QTableWidgetItem(order[3]))
+            order_id, client_name, order_date, status = order
+            self.table.setItem(row, 0, QTableWidgetItem(str(order_id)))
+            self.table.setItem(row, 1, QTableWidgetItem(client_name))
+            self.table.setItem(row, 2, QTableWidgetItem(order_date))
+            self.table.setItem(row, 3, QTableWidgetItem(status))
+            details_btn = QPushButton("Деталі")
+            details_btn.clicked.connect(lambda _, oid=order_id: self.show_order_details_dialog(oid))
+            self.table.setCellWidget(row, 4, details_btn)
+
+
 
     def open_order_form(self):
         self.dialog = QDialog()
@@ -156,50 +189,150 @@ class OrdersTab(QWidget):
 
 
 
+
     # def show_order_details(self, row, column):
-    #     order_id = int(self.table.item(row, 0).text())
-    #     items = get_order_items_by_order_id(order_id)
+    #     order_id_item = self.table.item(row, 0)
+    #     if order_id_item is None:
+    #         return
+    #     order_id = int(order_id_item.text())  # Перетворюємо ID замовлення на ціле число
 
-    #     msg = "Склад замовлення:\n"
-    #     total = 0
-    #     for item in items:
-    #         name, quantity, unit_price = item
-    #         total += quantity * unit_price
-    #         msg += f"{name} — {quantity} × ₴{unit_price} = ₴{quantity * unit_price}\n"
+    #     conn = get_connection()
+    #     cur = conn.cursor()
+    #     cur.execute("""
+    #         SELECT o.base_amount, o.discount_value, o.total_amount
+    #         FROM orders o
+    #         WHERE o.id = ?
+    #     """, (order_id,))
+    #     result = cur.fetchone()
+    #     conn.close()
 
-    #     msg += f"\nЗагальна сума: ₴{total}"
-    #     QMessageBox.information(self, "Деталі замовлення", msg)
+    #     if result:
+    #         base_amount, discount_value, total_amount = result
+    #         discount_str = f"{discount_value}%"
+    #         self.base_amount_label.setText(f"Сума без знижки: {base_amount} грн")
+    #         self.discount_label.setText(f"Знижка: {discount_str}")
+    #         self.total_amount_label.setText(f"До оплати: {total_amount} грн")
 
+    #         print(f"base: {base_amount}, discount: {discount_str}, total: {total_amount}")
 
-
-    def show_order_details(self, order_id):
+    def show_order_details_dialog(self, order_id):
         conn = get_connection()
         cur = conn.cursor()
+        
         cur.execute("""
-            SELECT o.base_amount, o.discount_value, o.total_amount
+            SELECT o.base_amount, o.discount_value, o.total_amount, c.name
             FROM orders o
+            JOIN customers c ON o.customer_id = c.id
             WHERE o.id = ?
         """, (order_id,))
         result = cur.fetchone()
-        if result:
-            base_amount, discount_value, total_amount = result
-            discount_str = f"{discount_value}%"
-            self.base_amount_label.setText(f"Сума без знижки: {base_amount} грн")
-            self.discount_label.setText(f"Знижка: {discount_str}")
-            self.total_amount_label.setText(f"До оплати: {total_amount} грн")
+        
+        if not result:
+            QMessageBox.warning(self, "Помилка", "Замовлення не знайдено.")
+            return
+
+        base_amount, discount_value, total_amount, customer_name = result
+
+        # Отримати товари замовлення
+        cur.execute("""
+            SELECT p.name, oi.quantity, oi.unit_price
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = ?
+        """, (order_id,))
+        products = cur.fetchall()
+
         conn.close()
 
+        # Створити діалогове вікно
+        dialog = QDialog()
+        dialog.setWindowTitle(f"Деталі замовлення №{order_id}")
 
-    def handle_view_order(self):
-        selected_items = self.table.selectedItems()
-        if not selected_items:
-            QMessageBox.warning(self, "Увага", "Будь ласка, виберіть замовлення.")
-            return
-        row = self.table.currentRow()
-        self.show_order_details(row, 0)
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel(f"Клієнт: {customer_name}"))
+        layout.addWidget(QLabel(f"Сума без знижки: ₴{base_amount:.2f}"))
+        layout.addWidget(QLabel(f"Знижка: {discount_value}%"))
+        layout.addWidget(QLabel(f"До оплати: ₴{total_amount:.2f}"))
 
-    def open_payment_dialog(self, order_id, max_amount):
-        # Передаємо current `OrdersTab` як аргумент
-        self.payments_tab.open_payment_dialog(order_id, max_amount, self)
+        # Таблиця товарів
+        product_table = QTableWidget()
+        product_table.setColumnCount(3)
+        product_table.setHorizontalHeaderLabels(["Назва товару", "Кількість", "Ціна"])
+        product_table.setRowCount(len(products))
+
+        for row, (name, qty, price) in enumerate(products):
+            product_table.setItem(row, 0, QTableWidgetItem(name))
+            product_table.setItem(row, 1, QTableWidgetItem(str(qty)))
+            product_table.setItem(row, 2, QTableWidgetItem(f"₴{price:.2f}"))
+
+        layout.addWidget(QLabel("Список товарів:"))
+        layout.addWidget(product_table)
+
+        close_btn = QPushButton("Закрити")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+
+        dialog.setLayout(layout)
+        dialog.exec_()
+
+
+
+    # def handle_view_order(self):
+    #     selected_items = self.table.selectedItems()
+    #     if not selected_items:
+    #         QMessageBox.warning(self, "Увага", "Будь ласка, виберіть замовлення.")
+    #         return
+    #     row = self.table.currentRow()
+    #     self.show_order_details(row, 0)
+
+    def open_payment_dialog(self, order_id, max_amount, orders_tab):
+        dialog = QDialog()
+        dialog.setWindowTitle("Внесення оплати")
+        layout = QFormLayout()
+
+        # Додаємо поля для відображення базової суми та знижки
+        conn = get_connection("appliance_store.db")
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT base_amount, discount_value, total_amount
+            FROM orders
+            WHERE id = ?
+        """, (order_id,))
+        base_amount, discount_value, total_amount = cur.fetchone()
+        conn.close()
+
+        # Відображення базової суми та знижки
+        self.base_amount_label = QLabel(f"Сума без знижки: ₴{base_amount:.2f}")
+        self.discount_label = QLabel(f"Знижка: {discount_value}%")
+        self.total_amount_label = QLabel(f"До оплати: ₴{total_amount:.2f}")
+
+
+
+
+        layout.addRow(self.base_amount_label)
+        layout.addRow(self.discount_label)
+        layout.addRow(self.total_amount_label)
+
+        # Введення суми та методу оплати
+        amount_input = QDoubleSpinBox()
+        amount_input.setMaximum(max_amount)
+        amount_input.setValue(max_amount)
+        amount_input.setDecimals(2)
+
+        method_box = QComboBox()
+        method_box.addItems(["Готівка", "Картка", "Банківський переказ"])
+
+        save_btn = QPushButton("Зберегти")
+        save_btn.clicked.connect(lambda: self.save_payment(
+            dialog, order_id, amount_input.value(), method_box.currentText(), orders_tab
+        ))
+
+        layout.addRow("Сума:", amount_input)
+        layout.addRow("Метод:", method_box)
+        layout.addRow(save_btn)
+
+        dialog.setLayout(layout)
+        dialog.exec_()
+
 
 

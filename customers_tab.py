@@ -52,17 +52,25 @@ class ClientsTab(QWidget):
     def load_data(self):
         """ Завантаження даних клієнтів з бази в таблицю """
         self.table.setRowCount(0)  # Очищення таблиці
-        clients = get_all_clients_with_stats()  # Функція отримання всіх клієнтів з БД
-
+        clients = get_all_clients_with_stats()  # Отримання клієнтів із бази
 
         self.table.setRowCount(len(clients))
 
         for row, client in enumerate(clients):
             for col in range(9):
-                item = QTableWidgetItem(str(client[col]) if client[col] is not None else "")
-                if col == 8:  # для is_regular — зробимо "Так"/"Ні"
-                    item.setText("Так" if client[col] else "Ні")
+                if col == 7:
+                    # Знижка
+                    value = f"{client[col]:.1f}%" if client[col] is not None else "0%"
+                    item = QTableWidgetItem(value)
+                elif col == 8:
+                    # Постійний клієнт: Так / Ні
+                    value = "Так" if client[col] else "Ні"
+                    item = QTableWidgetItem(value)
+                else:
+                    # Інші поля
+                    item = QTableWidgetItem(str(client[col]) if client[col] is not None else "")
                 self.table.setItem(row, col, item)
+
     
     
     def add_client(self):

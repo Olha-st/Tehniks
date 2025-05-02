@@ -36,7 +36,7 @@ class PaymentsTab(QWidget):
         self.table.setRowCount(len(orders))
 
         for row, order in enumerate(orders):
-            order_id, title, client_name, date, status, total, paid = order
+            order_id, title, client_name, date, status, base, discount, total, paid = order
             self.table.setItem(row, 0, QTableWidgetItem(title))
             self.table.setItem(row, 1, QTableWidgetItem(client_name))
             self.table.setItem(row, 2, QTableWidgetItem(date))
@@ -47,6 +47,7 @@ class PaymentsTab(QWidget):
             pay_button = QPushButton("Оплатити")
             pay_button.clicked.connect(partial(self.open_payment_dialog, order_id, total - paid, self.orders_tab))
             self.table.setCellWidget(row, 6, pay_button)
+
 
     def open_payment_dialog(self, order_id, max_amount, orders_tab):
         dialog = QDialog()
@@ -82,13 +83,16 @@ class PaymentsTab(QWidget):
         dialog.setLayout(layout)
         dialog.exec_()
 
-    def save_payment(self, dialog, order_id, date, amount, method, orders_tab):
+    def save_payment(self, dialog, order_id, payment_date, amount, method, orders_tab):
         conn = get_connection("appliance_store.db")
         cur = conn.cursor()
+
         if amount <= 0:
             QMessageBox.warning(self, "Помилка", "Сума має бути більшою за 0.")
             return
-        add_payment(order_id, date, amount, method)
+
+        # Додаємо оплату в базу даних
+        add_payment(order_id, payment_date, amount, method)
 
         # Перевірка суми після оплати
         cur.execute("""
@@ -107,5 +111,6 @@ class PaymentsTab(QWidget):
         orders_tab.load_data()
         dialog.accept()
         self.load_data()
+
 
 
