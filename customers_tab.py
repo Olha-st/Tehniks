@@ -3,7 +3,7 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, QLineEdit, QLabel, QFormLayout
 from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtCore import QRegExp
-from database import get_all_clients,get_all_clients_with_stats, add_client_to_db, update_client_in_db, delete_client_from_db  # Приклад імпорту функцій з бази даних
+from database import update_customer_discount,get_all_clients_with_stats, add_client_to_db, update_client_in_db, delete_client_from_db  # Приклад імпорту функцій з бази даних
 
 class ClientsTab(QWidget):
     def __init__(self):
@@ -72,6 +72,8 @@ class ClientsTab(QWidget):
                 self.table.setItem(row, col, item)
 
     
+    
+
     
     def add_client(self):
         """ Додати нового клієнта """

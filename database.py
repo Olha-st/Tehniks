@@ -113,28 +113,15 @@ def get_customer_info(customer_id):
     """, (customer_id,))
     order_count, total_spent = cur.fetchone()
 
-    # Визначаємо знижку
-    if total_spent >= 50000:
-        discount = "10%"
-    elif total_spent >= 25000:
-        discount = "5%"
-    elif total_spent >= 12000:
-        discount = "3%"
-    else:
-        discount = "0%"
-
-    # Постійний клієнт
-    is_regular = 1 if order_count >= 3 else 0
-
-    # Оновлюємо клієнта
+    # Отримуємо знижку та статус клієнта з таблиці customers
     cur.execute("""
-        UPDATE customers
-        SET discount_level = ?, is_regular = ?
+        SELECT discount_level, is_regular
+        FROM customers
         WHERE id = ?
-    """, (discount, is_regular, customer_id))
-    conn.commit()
+    """, (customer_id,))
+    discount, is_regular = cur.fetchone()
 
-    # Отримуємо список замовлень
+    # Отримуємо список замовлень клієнта
     cur.execute("""
         SELECT orders.id, orders.order_date, orders.status,
                IFNULL(SUM(order_items.quantity * order_items.unit_price), 0) AS total
@@ -146,6 +133,8 @@ def get_customer_info(customer_id):
     """, (customer_id,))
     orders = cur.fetchall()
 
+    conn.close()
+
     return {
         "order_count": order_count,
         "total_spent": total_spent,
@@ -153,6 +142,49 @@ def get_customer_info(customer_id):
         "is_regular": is_regular,
         "orders": orders
     }
+
+
+
+def update_customer_discount(customer_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Підрахунок загальної суми покупок і кількості замовлень
+    cur.execute("""
+        SELECT 
+            COUNT(DISTINCT orders.id) AS order_count,
+            IFNULL(SUM(order_items.quantity * order_items.unit_price), 0) AS total_spent
+        FROM orders
+        LEFT JOIN order_items ON orders.id = order_items.order_id
+        WHERE orders.customer_id = ?
+    """, (customer_id,))
+    order_count, total_spent = cur.fetchone()
+
+    # Визначення знижки
+    if total_spent >= 50000:
+        discount = "10%"
+    elif total_spent >= 25000:
+        discount = "5%"
+    elif total_spent >= 12000:
+        discount = "3%"
+    else:
+        discount = "0%"
+
+    # Визначення постійного клієнта
+    is_regular = 1 if order_count >= 3 else 0
+
+    # Оновлення даних клієнта
+    cur.execute("""
+        UPDATE customers
+        SET discount_level = ?, is_regular = ?
+        WHERE id = ?
+    """, (discount, is_regular, customer_id))
+
+    conn.commit()
+    conn.close()
+
+
+
 
 def get_all_clients_with_stats():
     conn = get_connection()
@@ -325,12 +357,27 @@ def get_order_items_by_order_id(order_id):
     """, (order_id,))
     return cur.fetchall()
 
-def update_product_quantity(product_id, delta):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE products SET quantity = quantity + ? WHERE id = ?", (delta, product_id))
+# def update_product_quantity(product_id, delta):
+#     conn = get_connection()
+#     cursor = conn.cursor()
+#     cursor.execute("UPDATE products SET quantity = quantity + ? WHERE id = ?", (delta, product_id))
+#     conn.commit()
+#     conn.close()
+
+def update_product_quantity(self, product_id, quantity):
+    conn = get_connection()  # Replace with your actual database connection function
+    cur = conn.cursor()
+    
+    # Assuming you want to subtract the ordered quantity from the stock_quantity
+    cur.execute("""
+        UPDATE products
+        SET stock_quantity = stock_quantity - ?
+        WHERE id = ?
+    """, (quantity, product_id))
+    
     conn.commit()
     conn.close()
+
 
 
 # оплати

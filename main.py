@@ -16,14 +16,19 @@ class MainWindow(QMainWindow):
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabPosition(QTabWidget.West)
 
-        # Створення вкладок
+        # Спочатку створюємо ClientsTab
         self.clients_tab = ClientsTab()
-        self.orders_tab = OrdersTab()  # Спочатку створюємо orders_tab
+
+        # Тимчасово створюємо orders_tab без посилань
+        self.orders_tab = OrdersTab()
+
+        # Створюємо PaymentsTab і передаємо посилання на інші вкладки
         self.payments_tab = PaymentsTab(self.orders_tab, self.clients_tab)
 
-        # Передаємо посилання на вкладки, які мають бути оновлені
+        # Тепер можна встановити посилання у OrdersTab
         self.orders_tab.payments_tab = self.payments_tab
         self.orders_tab.customers_tab = self.clients_tab
+
 
         # Додавання вкладок у правильному порядку
         self.tab_widget.addTab(ProductsTab(), "Товари")
