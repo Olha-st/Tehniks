@@ -1,9 +1,10 @@
-from PyQt5.QtWidgets import QWidget,QDoubleSpinBox, QVBoxLayout, QTableWidget, QPushButton, QHBoxLayout, QComboBox, QLabel, QLineEdit,QInputDialog, QSpinBox, QTableWidgetItem, QMessageBox, QDialog, QFormLayout
+from PyQt5.QtWidgets import QWidget,QDoubleSpinBox, QVBoxLayout, QTableWidget,QHeaderView, QPushButton, QHBoxLayout, QComboBox, QLabel, QLineEdit,QInputDialog, QSpinBox, QTableWidgetItem, QMessageBox, QDialog, QFormLayout
 from database import get_all_orders, add_order, get_customers, get_products, add_order_item, get_order_items_by_order_id, update_product_quantity
 from database import get_connection, get_all_orders_with_total_and_paid, update_customer_discount
 from functools import partial
 import sqlite3
 from PyQt5.QtCore import Qt
+from styles import style_table, style_controls
 
 
 
@@ -16,21 +17,65 @@ class OrdersTab(QWidget):
 
         # Кнопки
         button_layout = QHBoxLayout()
+
+
+        # Горизонтальний layout для кнопок
+        button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(24, 24, 0, 24)  # Зліва 2 см, зверху/знизу по 1 см
+        button_layout.setSpacing(0)  # Відстань між кнопками = 2 см
+
+        button_style = """
+            QPushButton {
+                background-color: #B57EDC;
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 6px 14px;
+                border: none;
+                border-radius: 8px;
+                min-width: 100px;
+                min-height: 32px;
+            }
+            QPushButton:hover {
+                background-color: #A070C4;
+            }
+            QPushButton:pressed {
+                background-color: #8E5CB5;
+            }
+        """
+
         self.create_button = QPushButton("Створити замовлення")
+        self.create_button.setFixedSize(200, 40)
+        self.create_button.setStyleSheet(button_style)
         self.create_button.clicked.connect(self.open_order_form)
-        button_layout.addWidget(self.create_button)
+        button_layout.addWidget(self.create_button, alignment=Qt.AlignLeft)
 
         self.delete_button = QPushButton("Видалити замовлення")
+        self.delete_button.setFixedSize(200, 40)
+        self.delete_button.setStyleSheet(button_style)
         self.delete_button.clicked.connect(self.delete_order)
-        button_layout.addWidget(self.delete_button)
+        button_layout.addWidget(self.delete_button, alignment=Qt.AlignLeft)
+
 
 
         self.layout.addLayout(button_layout)
 
         # Таблиця замовлень
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["ID", "Клієнт", "Дата", "Статус", ""])
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels(["ID","Номер", "Клієнт", "Дата", "Статус", "Інформація"])
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        style_table(self.table)
+        self.table.setColumnHidden(0, True)
+        # Зміна ширини колонок таблиці
+
+        self.table.setColumnWidth(0, 50) #id
+        self.table.setColumnWidth(1, 300) 
+        self.table.setColumnWidth(2, 150)  
+        self.table.setColumnWidth(3, 150) 
+        self.table.setColumnWidth(4, 150)
+        self.table.setColumnWidth(5, 150)
         self.table.cellDoubleClicked.connect(self.show_order_details_dialog)
         self.layout.addWidget(self.table)
 
@@ -43,7 +88,7 @@ class OrdersTab(QWidget):
 
         # Отримуємо дані з бази даних
         cur.execute("""
-            SELECT o.id, c.name, o.order_date, o.status
+            SELECT o.id, o.title, c.name, o.order_date, o.status
             FROM orders o
             JOIN customers c ON o.customer_id = c.id
         """)
@@ -52,15 +97,52 @@ class OrdersTab(QWidget):
 
         # Оновлюємо таблицю з замовленнями
         self.table.setRowCount(len(orders))
+        # self.table.setColumnCount(6)
+
+        button_style = """
+                QPushButton {
+                    background-color: #B57EDC;
+                    color: white;
+                    padding: 5px 10px;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 14px;
+                }
+                QPushButton:hover {
+                    background-color: #A070C4;  
+                }
+                QPushButton:pressed {
+                    background-color: #8E5CB5;  
+                }
+            """
+
+            # Додавання рядків у таблицю
         for row, order in enumerate(orders):
-            order_id, client_name, order_date, status = order
+            order_id, order_title, client_name, order_date, status = order
             self.table.setItem(row, 0, QTableWidgetItem(str(order_id)))
-            self.table.setItem(row, 1, QTableWidgetItem(client_name))
-            self.table.setItem(row, 2, QTableWidgetItem(order_date))
-            self.table.setItem(row, 3, QTableWidgetItem(status))
+            self.table.setItem(row, 1, QTableWidgetItem(order_title))  # показує номер
+            self.table.setItem(row, 2, QTableWidgetItem(client_name))
+            self.table.setItem(row, 3, QTableWidgetItem(order_date))
+            self.table.setItem(row, 4, QTableWidgetItem(status))
+
+            # Кнопка "Деталі" з бузковим стилем
             details_btn = QPushButton("Деталі")
+            details_btn.setFixedSize(130, 40)
+            details_btn.setStyleSheet(button_style)
             details_btn.clicked.connect(lambda _, oid=order_id: self.show_order_details_dialog(oid))
-            self.table.setCellWidget(row, 4, details_btn)
+
+
+            # Центрування кнопки у комірці
+            btn_container = QWidget()
+            btn_layout = QHBoxLayout(btn_container)
+            btn_layout.addWidget(details_btn)
+            btn_layout.setAlignment(Qt.AlignCenter)
+            btn_layout.setContentsMargins(0, 0, 0, 0)  # без відступів
+
+            self.table.setCellWidget(row, 5, btn_container)
+            self.table.verticalHeader().setDefaultSectionSize(60)  # висота рядка
+
+
 
 
     def add_product_to_new_order(self):
@@ -96,6 +178,7 @@ class OrdersTab(QWidget):
     def open_order_form(self):
         self.dialog = QDialog()
         self.dialog.setWindowTitle("Нове замовлення")
+        self.dialog.setFixedSize(600, 500)
         form_layout = QFormLayout()
 
         self.customer_box = QComboBox()
@@ -138,6 +221,42 @@ class OrdersTab(QWidget):
 
         self.total_label = QLabel("Загальна сума: ₴0")
         form_layout.addRow(self.total_label)
+
+        # Стилі для елементів
+        self.dialog.setStyleSheet("""
+            QDialog {
+                background-color: #E6E6FA;  /* світло-бузковий */
+            }
+
+            QLabel {
+                font-size: 14px;
+                color: #4B0082;
+            }
+
+            QComboBox, QSpinBox, QLineEdit, QTextEdit {
+                background-color: white;
+                border: 1px solid #9370DB;
+                padding: 5px;
+                font-size: 14px;
+                border-radius: 6px;
+            }
+
+            QPushButton {
+                background-color: #9370DB;
+                color: white;
+                border-radius: 10px;
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+
+            QPushButton:hover {
+                background-color: #7B68EE;
+            }
+
+            QPushButton:pressed {
+                background-color: #6A5ACD;
+            }
+        """)
 
 
         self.dialog.setLayout(form_layout)
@@ -277,8 +396,47 @@ class OrdersTab(QWidget):
 
         dialog = QDialog()
         dialog.setWindowTitle(f"Редагування замовлення №{order_id}")
+        dialog.setMinimumSize(800, 500)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #f2f2ff;
+                font-size: 14pt;
+                font-family: Segoe UI;
+            }
+            QLabel {
+                font-weight: bold;
+                margin-bottom: 5px;
+                font-size: 10pt;
+            }
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #bbb;
+                font-size: 13pt;
+            }
+            QHeaderView::section {
+                background-color: #b3aaff;
+                font-weight: bold;
+                font-size: 12pt;
+                margin-bottom: 5px;
+                padding: 5px;
+                border: 1px solid #aaa;
+            }
+            QPushButton {
+                background-color: #a68cff;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #9370db;
+            }
+        """)
 
         layout = QVBoxLayout()
+        layout.setSpacing(15)
+
         layout.addWidget(QLabel(f"Клієнт: {customer_name}"))
         layout.addWidget(QLabel(f"Знижка: {discount_value}%"))
 
@@ -288,49 +446,68 @@ class OrdersTab(QWidget):
         product_table = QTableWidget()
         product_table.setColumnCount(4)
         product_table.setHorizontalHeaderLabels(["Назва товару", "Кількість", "Ціна", "Операції"])
+        # Встановлення ширини колонок
+        product_table.setColumnWidth(0, 400)  # Назва товару
+        product_table.setColumnWidth(1, 100)   # Кількість
+        product_table.setColumnWidth(2, 100)   # Ціна
+        product_table.setColumnWidth(3, 110)  # Операції
         product_table.setRowCount(len(products))
+
+        product_table.verticalHeader().setDefaultSectionSize(40)
 
         for row, (name, qty, price) in enumerate(products):
             product_table.setItem(row, 0, QTableWidgetItem(name))
 
             qty_item = QTableWidgetItem(str(qty))
+            qty_item.setTextAlignment(Qt.AlignCenter)
             qty_item.setFlags(qty_item.flags() | Qt.ItemIsEditable)
             product_table.setItem(row, 1, qty_item)
 
             price_item = QTableWidgetItem(str(price))
+            price_item.setTextAlignment(Qt.AlignCenter)
             price_item.setFlags(price_item.flags() | Qt.ItemIsEditable)
             product_table.setItem(row, 2, price_item)
 
             delete_btn = QPushButton("Видалити")
+            delete_btn.setStyleSheet("QPushButton { background-color: #ff6666; color: white; border-radius: 6px; padding: 6px 12px; }"
+                                    "QPushButton:hover { background-color: #e64545; }")
             delete_btn.clicked.connect(lambda _, r=row: self.delete_product_from_order(r, order_id, product_table, total_label, discount_value))
-            product_table.setCellWidget(row, 3, delete_btn)
+            btn_container = QWidget()
+            btn_layout = QHBoxLayout(btn_container)
+            btn_layout.addWidget(delete_btn)
+            btn_layout.setAlignment(Qt.AlignCenter)
+            btn_layout.setContentsMargins(0, 0, 0, 0)
+            product_table.setCellWidget(row, 3, btn_container)
 
         layout.addWidget(QLabel("Список товарів:"))
         layout.addWidget(product_table)
 
-        # Оновлення суми при зміні
         product_table.cellChanged.connect(lambda *_: self.update_order_total(product_table, total_label, discount_value))
-
         self.update_order_total(product_table, total_label, discount_value)
 
-        # Додати товар
+        # Buttons area
+        button_layout = QHBoxLayout()
+
         add_product_btn = QPushButton("Додати товар")
         add_product_btn.clicked.connect(lambda: self.add_product_to_order(order_id, product_table, total_label, discount_value))
-        layout.addWidget(add_product_btn)
+        button_layout.addWidget(add_product_btn)
 
-
-        # Зберегти зміни
         save_btn = QPushButton("Зберегти зміни")
-        save_btn.clicked.connect(lambda: self.save_order_changes(order_id, product_table, dialog, total_label, discount_value))  # Передаємо всі аргументи
-        layout.addWidget(save_btn)
+        save_btn.clicked.connect(lambda: self.save_order_changes(order_id, product_table, dialog, total_label, discount_value))
+        button_layout.addWidget(save_btn)
 
-        # Закрити
         close_btn = QPushButton("Закрити")
         close_btn.clicked.connect(dialog.accept)
-        layout.addWidget(close_btn)
+        button_layout.addWidget(close_btn)
 
+        layout.addLayout(button_layout)
         dialog.setLayout(layout)
         dialog.exec_()
+
+
+
+
+
 
     def get_all_products(self):
         conn = get_connection()
@@ -359,7 +536,31 @@ class OrdersTab(QWidget):
 
 
 
-    def delete_product_from_order(self, row, order_id, product_table, total_label):
+    # def delete_product_from_order(self, row, order_id, product_table, total_label, discount_value):
+    #     product_name_item = product_table.item(row, 0)
+    #     if product_name_item is None:
+    #         QMessageBox.warning(self, "Помилка", "Не вдалося отримати назву товару.")
+    #         return
+
+    #     product_name = product_name_item.text()
+
+    #     # Видалення з бази
+    #     conn = get_connection()
+    #     cur = conn.cursor()
+    #     cur.execute("SELECT id FROM products WHERE name = ?", (product_name,))
+    #     result = cur.fetchone()
+    #     if not result:
+    #         QMessageBox.warning(self, "Помилка", f"Товар '{product_name}' не знайдено в базі даних.")
+    #         conn.close()
+    #         return
+
+    #     product_id = result[0]
+    #     cur.execute("DELETE FROM order_items WHERE order_id = ? AND product_id = ?", (order_id, product_id))
+    #     conn.commit()
+    #     conn.close()
+
+    def delete_product_from_order(self, row, order_id, product_table, total_label, discount_value):
+        # Отримуємо назву товару
         product_name_item = product_table.item(row, 0)
         if product_name_item is None:
             QMessageBox.warning(self, "Помилка", "Не вдалося отримати назву товару.")
@@ -367,32 +568,46 @@ class OrdersTab(QWidget):
 
         product_name = product_name_item.text()
 
-        # Видалення з бази
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM products WHERE name = ?", (product_name,))
-        result = cur.fetchone()
-        if not result:
-            QMessageBox.warning(self, "Помилка", f"Товар '{product_name}' не знайдено в базі даних.")
-            conn.close()
-            return
+        # Підключення до бази даних
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            
+            # Пошук товару за назвою
+            cur.execute("SELECT id FROM products WHERE name = ?", (product_name,))
+            result = cur.fetchone()
+            if not result:
+                QMessageBox.warning(self, "Помилка", f"Товар '{product_name}' не знайдено в базі даних.")
+                return
 
-        product_id = result[0]
-        cur.execute("DELETE FROM order_items WHERE order_id = ? AND product_id = ?", (order_id, product_id))
-        conn.commit()
-        conn.close()
+            product_id = result[0]
+            
+            # Видалення товару з таблиці order_items
+            cur.execute("DELETE FROM order_items WHERE order_id = ? AND product_id = ?", (order_id, product_id))
+            conn.commit()
 
-        # Видалення з таблиці інтерфейсу
-        product_table.removeRow(row)
+            # Оновлення таблиці після видалення
+            product_table.removeRow(row)
 
-        # Оновлення підсумку
-        self.update_order_total(product_table, total_label)
+            # Оновлюємо загальну суму
+            self.update_order_total(product_table, total_label, discount_value)
+            
+            # Повідомлення про успішне видалення
+            QMessageBox.information(self, "Успіх", f"Товар '{product_name}' успішно видалено з замовлення.")
 
-        QMessageBox.information(self, "Успіх", f"Товар '{product_name}' видалено з замовлення.")
+        except Exception as e:
+            # Обробка помилок під час роботи з базою даних
+            QMessageBox.critical(self, "Помилка", f"Сталася помилка при роботі з базою даних: {str(e)}")
+        
+        finally:
+            # Закриття з'єднання з базою даних
+            if conn:
+                conn.close()
 
 
 
-    def save_order_changes(self, order_id, product_table, dialog, total_label):
+
+    def save_order_changes(self, order_id, product_table, dialog, total_label, discount_value):
         base_amount = 0
 
         # Проходимо по всіх рядках таблиці товарів
@@ -408,7 +623,7 @@ class OrdersTab(QWidget):
             try:
                 # Спробуємо отримати кількість та ціну
                 quantity = int(quantity_item.text())
-                price = float(price_item.text().replace("₴", ""))  # Видаляємо символ ₴
+                price = float(price_item.text().replace("₴", "").strip())  # Видаляємо ₴ та пробіли
             except ValueError:
                 continue  # Пропустити некоректні значення
 
@@ -421,19 +636,12 @@ class OrdersTab(QWidget):
 
                 base_amount += quantity * price  # Обчислюємо базову суму
 
-        # Оновлення сум в таблиці orders
-        conn = get_connection()
-        cur = conn.cursor()
-
-        # Отримуємо знижку для замовлення
-        cur.execute("SELECT discount_value FROM orders WHERE id = ?", (order_id,))
-        discount_row = cur.fetchone()
-        discount_value = discount_row[0] if discount_row else 0
-
         # Обчислюємо загальну суму після знижки
         total_amount = base_amount * (1 - discount_value / 100)
 
         # Оновлюємо інформацію в таблиці orders
+        conn = get_connection()
+        cur = conn.cursor()
         cur.execute("""
             UPDATE orders
             SET base_amount = ?, total_amount = ?
@@ -443,20 +651,22 @@ class OrdersTab(QWidget):
         conn.commit()
         conn.close()
 
-            # оновлення вкладки Оплати
+        # Оновлення вкладки Оплати
         if self.payments_tab:
             self.payments_tab.load_data()
 
-        # оновлення вкладки Клієнти
+        # Оновлення вкладки Клієнти
         if self.customers_tab:
             self.customers_tab.load_data()
 
         # Інформуємо користувача
         QMessageBox.information(self, "Збережено", "Зміни збережено успішно.")
-        
-        # Закриваємо діалогове вікно та оновлюємо дані
+
+        # Закриваємо діалогове вікно
         # dialog.accept()
-        self.load_data()  # Завантажуємо нові дані після збереження
+
+        # Оновлюємо дані
+        self.load_data()
 
 
     def get_database_connection(self):

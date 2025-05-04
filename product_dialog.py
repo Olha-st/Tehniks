@@ -5,7 +5,42 @@ from database import get_categories
 class ProductDialog(QDialog):
     def __init__(self, parent=None, product=None):
         super().__init__(parent)
-        self.setWindowTitle("Товар")
+        self.setWindowTitle("Додавання товару")
+        self.resize(400, 500)  # Ширина 400 px, висота 500 px
+
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #F4F0FA;  /* дуже світлий бузковий */
+            }
+            QLabel {
+                font-size: 14px;
+                font-weight: bold;
+                color: #2F2F4F;
+            }
+            QLineEdit, QComboBox, QTextEdit, QSpinBox, QDoubleSpinBox {
+                background-color: #FFFFFF;
+                font-size: 14px;
+                border: 1px solid #C0C0D0;
+                padding: 6px;
+                border-radius: 6px;
+            }
+            QPushButton {
+                background-color: #9370DB;  /* бузковий */
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 10px;
+            }
+            QPushButton:hover {
+                background-color: #7B68EE;
+            }
+            QPushButton:pressed {
+                background-color: #6A5ACD;
+            }
+        """)
 
         self.categories = get_categories()
         self.selected_category_id = None

@@ -215,14 +215,6 @@ def get_all_clients_with_stats():
     return clients
 
 
-
-
-
-
-
-
-
-
 # для постачальників
 
 def get_all_suppliers():
@@ -322,13 +314,6 @@ def add_order(customer_id, order_date, base_amount):
 
 
 
-
-
-
-
-
-
-
 def add_order_item(order_id, product_id, quantity, unit_price):
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
@@ -357,12 +342,6 @@ def get_order_items_by_order_id(order_id):
     """, (order_id,))
     return cur.fetchall()
 
-# def update_product_quantity(product_id, delta):
-#     conn = get_connection()
-#     cursor = conn.cursor()
-#     cursor.execute("UPDATE products SET quantity = quantity + ? WHERE id = ?", (delta, product_id))
-#     conn.commit()
-#     conn.close()
 
 def update_product_quantity(self, product_id, quantity):
     conn = get_connection()  # Replace with your actual database connection function

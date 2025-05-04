@@ -6,15 +6,48 @@ from customers_tab import ClientsTab
 from suppliers_tab import SuppliersTab
 from orders_tab import OrdersTab
 from payments_tab import PaymentsTab
+from styles import style_table
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Магазин побутової техніки")
-        self.setGeometry(100, 100, 1000, 600)
+        self.setGeometry(100, 100, 1300, 600)
 
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabPosition(QTabWidget.West)
+        self.tab_widget.setStyleSheet("""
+            QTabBar::tab {
+                background: #D8BFD8;              /* світло-бузковий */
+                color: black;
+                border: 1px solid #A9A9A9;
+                padding: 5px 5px;
+                font-size: 12px;
+                font-weight: bold;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+                min-width: 10px;
+                height: 100px;
+            }
+
+            QTabBar::tab:selected {
+                background: #9370DB;              /* активна вкладка - темніший бузковий */
+                color: white;
+            }
+
+            QTabBar::tab:hover {
+                background: #BA55D3;
+                color: white;
+            }
+
+            QTabWidget::pane {
+                border: 2px solid #9370DB;
+                border-radius: 5px;
+                padding: 5px;
+            }
+            """)
+
 
         # Спочатку створюємо ClientsTab
         self.clients_tab = ClientsTab()
@@ -28,7 +61,6 @@ class MainWindow(QMainWindow):
         # Тепер можна встановити посилання у OrdersTab
         self.orders_tab.payments_tab = self.payments_tab
         self.orders_tab.customers_tab = self.clients_tab
-
 
         # Додавання вкладок у правильному порядку
         self.tab_widget.addTab(ProductsTab(), "Товари")

@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QLabel, QDialog
 from product_dialog import ProductDialog
 from database import get_all_products, add_product, update_product, delete_product, get_category_names
 import sqlite3
-from functools import partial
+from styles import style_table, style_controls
 
 
 class ProductsTab(QWidget):
@@ -20,9 +20,13 @@ class ProductsTab(QWidget):
         # Верхні кнопки
         button_layout = QHBoxLayout()
         self.add_button = QPushButton("Додати товар")
+        self.add_button.setFixedSize(160, 60)
         self.edit_button = QPushButton("Редагувати товар")
+        self.edit_button.setFixedSize(160, 60)
         self.delete_button = QPushButton("Видалити")
+        self.delete_button.setFixedSize(160, 60)
         self.details_button = QPushButton("Деталі")
+        self.details_button.setFixedSize(160, 60)
         button_layout.addWidget(self.add_button)
         button_layout.addWidget(self.edit_button)
         button_layout.addWidget(self.delete_button)
@@ -55,6 +59,25 @@ class ProductsTab(QWidget):
         self.filter_layout.addWidget(self.filter_price_to)
         self.filter_layout.addWidget(self.filter_button)
 
+        style_controls(
+            self.add_button,
+            self.edit_button,
+            self.delete_button,
+            self.details_button,
+            self.filter_button,
+            labels=[
+                self.filter_category_label,
+                self.filter_price_from_label,
+                self.filter_price_to_label
+            ],
+            line_edits=[
+                self.filter_price_from,
+                self.filter_price_to
+            ],
+            combo_box=self.filter_category_combo
+)
+
+
         self.layout.addLayout(self.filter_layout) 
 
         # Таблиця
@@ -63,6 +86,25 @@ class ProductsTab(QWidget):
         self.table.setHorizontalHeaderLabels([
             "ID", "Назва", "Ціна", "Кількість", "Категорія","Фото"
         ])
+
+        style_table(self.table)
+
+        # Встановлення стилю для таблиці
+        self.table.setStyleSheet("QTableWidget {font-size: 16px;}")
+        self.table.setColumnHidden(0, True)
+        
+
+
+        # Зміна ширини колонок таблиці
+        self.table.verticalHeader().setDefaultSectionSize(50)  # Наприклад, 50 пікселів
+
+        self.table.setColumnWidth(0, 50) #id
+        self.table.setColumnWidth(1, 300)  # назва
+        self.table.setColumnWidth(2, 80)  
+        self.table.setColumnWidth(3, 100) 
+        self.table.setColumnWidth(4, 120)
+        self.table.setColumnWidth(5, 250)
+
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.layout.addWidget(self.table)
         self.setLayout(self.layout)
@@ -75,7 +117,7 @@ class ProductsTab(QWidget):
 
         self.load_data()
 
-    from database import get_all_products, add_product, update_product, delete_product, get_category_names
+
 
     def load_data(self):
         self.table.setRowCount(0)
@@ -114,25 +156,50 @@ class ProductsTab(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(str(prod[0])))  # ID
             self.table.setItem(row, 1, QTableWidgetItem(prod[1]))       # Назва
             self.table.setItem(row, 2, QTableWidgetItem(str(prod[3])))  # Ціна
-            self.table.setItem(row, 3, QTableWidgetItem(str(prod[4])))  # Кількість
+
+            quantity_item = QTableWidgetItem(str(prod[4]))              # Кількість
+            quantity_item.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 3, quantity_item)
+           
 
             category_name = category_names.get(prod[5], "Невідомо")
             self.table.setItem(row, 4, QTableWidgetItem(category_name))
 
-            # self.table.setItem(row, 5, QTableWidgetItem(prod[2]))  # Опис
-
             # Кнопки: одна "Додати фото" + одна "Переглянути фото"
             image_buttons_layout = QHBoxLayout()
 
+            button_style = """
+                QPushButton {
+                    background-color: #B57EDC;         /* Medium Purple */
+                    color: white;
+                    padding: 5px 10px;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 14px;
+                }
+                QPushButton:hover {
+                    background-color: #A070C4;         /* Darker purple on hover */
+                }
+                QPushButton:pressed {
+                    background-color: #8E5CB5;         /* Another tone when pressed */
+                }
+            """
+
             # Кнопка додавання фото
             add_photo_button = QPushButton("Додати фото")
+            add_photo_button.setStyleSheet(button_style)
             add_photo_button.clicked.connect(lambda _, product_id=prod[0]: self.add_product_image(product_id))
             image_buttons_layout.addWidget(add_photo_button)
 
             # Кнопка перегляду фото
-            view_photos_button = QPushButton("Переглянути фото")
+            view_photos_button = QPushButton("Переглянути")
+            view_photos_button.setStyleSheet(button_style)
             view_photos_button.clicked.connect(lambda _, product_id=prod[0]: self.view_images_slider(product_id))
             image_buttons_layout.addWidget(view_photos_button)
+            add_photo_button.setFixedSize(110, 30)
+            view_photos_button.setFixedSize(110,30)
+
+
 
             image_widget = QWidget()
             image_widget.setLayout(image_buttons_layout)
