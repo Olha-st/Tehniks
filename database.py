@@ -275,11 +275,11 @@ def add_order(customer_id, order_date, base_amount):
 
     # Знижка залежно від суми попередніх замовлень
     if total_spent >= 100000:
-        discount_percent = 8
+        discount_percent = 7
     elif total_spent >= 55000:
-        discount_percent = 5
-    elif total_spent >= 25000:
         discount_percent = 3
+    elif total_spent >= 25000:
+        discount_percent = 1
     else:
         discount_percent = 0
 
@@ -306,12 +306,11 @@ def add_order(customer_id, order_date, base_amount):
 
     # Оновлення статусу постійного клієнта
     cur.execute("UPDATE customers SET is_regular = ? WHERE id = ?", (is_regular, customer_id))
+
     conn.commit()
-
     conn.close()
+
     return order_id
-
-
 
 
 def add_order_item(order_id, product_id, quantity, unit_price):
@@ -370,13 +369,30 @@ def get_all_payments():
     """)
     return cur.fetchall()
 
+
+
 def add_payment(order_id, payment_date, amount, method):
-    conn = get_connection("appliance_store.db")
+    conn = get_connection()
     cur = conn.cursor()
+
+    # Додати платіж
     cur.execute("""
         INSERT INTO payments (order_id, payment_date, amount, method)
         VALUES (?, ?, ?, ?)
     """, (order_id, payment_date, amount, method))
+
+    # Отримати загальну суму оплати за замовлення
+    cur.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE order_id = ?", (order_id,))
+    total_paid = cur.fetchone()[0]
+
+    # Отримати повну суму до оплати за замовлення
+    cur.execute("SELECT total_amount FROM orders WHERE id = ?", (order_id,))
+    total_amount = cur.fetchone()[0]
+
+    # Якщо сплачено повністю або більше — оновити статус
+    if total_paid >= total_amount:
+        cur.execute("UPDATE orders SET status = 'Оплачено' WHERE id = ?", (order_id,))
+
     conn.commit()
     conn.close()
 

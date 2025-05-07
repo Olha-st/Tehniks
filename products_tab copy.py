@@ -1,10 +1,11 @@
 # вкладка "Товари"
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QComboBox,
-    QTableWidgetItem, QMessageBox, QAbstractItemView, QLineEdit
+    QTableWidgetItem, QMessageBox, QAbstractItemView, QLineEdit, QSizePolicy
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QDialog
+from PyQt5.QtCore import Qt
 from product_dialog import ProductDialog
 from database import get_all_products, add_product, update_product, delete_product, get_category_names
 import sqlite3
@@ -13,38 +14,99 @@ import sqlite3
 class ProductsTab(QWidget):
     def __init__(self):
         super().__init__()
+        # Головний вертикальний layout
         self.layout = QVBoxLayout()
 
-        # Верхні кнопки
-        button_layout = QHBoxLayout()
-        self.add_button = QPushButton("Додати товар")
-        self.edit_button = QPushButton("Редагувати товар")
-        self.delete_button = QPushButton("Видалити")
-        self.details_button = QPushButton("Деталі")
-        button_layout.addWidget(self.add_button)
-        button_layout.addWidget(self.edit_button)
-        button_layout.addWidget(self.delete_button)
-        button_layout.addWidget(self.details_button)
-        self.layout.addLayout(button_layout)
+        # Стиль кнопок
+        button_style = """
+            QPushButton {
+                background-color: #B57EDC;
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 6px 14px;
+                border: none;
+                border-radius: 8px;
+                min-width: 100px;
+                min-height: 32px;
+            }
+            QPushButton:hover {
+                background-color: #A070C4;
+            }
+            QPushButton:pressed {
+                background-color: #8E5CB5;
+            }
+        """
 
+        # === КНОПКИ ===
+        buttons_with_spacing = QVBoxLayout()
+        buttons_with_spacing.addSpacing(24)
+
+        for text in ["Додати товар", "Редагувати товар", "Видалити", "Деталі"]:
+            btn = QPushButton(text)
+            btn.setFixedSize(200, 40)
+            btn.setStyleSheet(button_style)
+
+            wrapper = QWidget()
+            wrapper_layout = QHBoxLayout(wrapper)
+            wrapper_layout.setContentsMargins(0, 0, 0, 0)
+            wrapper_layout.setAlignment(Qt.AlignLeft)
+            wrapper_layout.addWidget(btn)
+
+            buttons_with_spacing.addWidget(wrapper)
+
+        buttons_with_spacing.addSpacing(24)
+        self.layout.addLayout(buttons_with_spacing)
+
+        # === ФІЛЬТР ===
+        # self.filter_layout = QHBoxLayout()
+        # self.filter_layout.setSpacing(38)
+        # self.filter_layout.setAlignment(Qt.AlignLeft)
+
+        # self.filter_category_label = QLabel("Обери категорію:")
+        # self.filter_category_combo = QComboBox()
+        # self.filter_category_combo.addItem("Усі")
+        # for name in get_category_names().values():
+        #     self.filter_category_combo.addItem(name)
+
+        # self.filter_price_from_label = QLabel("Ціна від:")
+        # self.filter_price_from = QLineEdit()
+        # self.filter_price_from.setFixedSize(100, 30)
+        # self.filter_price_from.setPlaceholderText("0")
+
+        # Створення layout для фільтра
         self.filter_layout = QHBoxLayout()
+        self.filter_layout.setSpacing(20)  # Відстань між елементами
+        self.filter_layout.setAlignment(Qt.AlignLeft)  # Вирівнювання по лівому краю
+
+        # Створення віджетів фільтра
         self.filter_category_label = QLabel("Обери категорію:")
         self.filter_category_combo = QComboBox()
-        self.filter_category_combo.addItem("Усі")  # перший пункт
+        self.filter_category_combo.setFixedSize(150, 30)
+        self.filter_category_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.filter_category_combo.addItem("Усі")
         for name in get_category_names().values():
             self.filter_category_combo.addItem(name)
 
         self.filter_price_from_label = QLabel("Ціна від:")
         self.filter_price_from = QLineEdit()
         self.filter_price_from.setPlaceholderText("0")
+        self.filter_price_from.setFixedSize(100, 30)
+        self.filter_price_from.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         self.filter_price_to_label = QLabel("до:")
         self.filter_price_to = QLineEdit()
         self.filter_price_to.setPlaceholderText("10000")
+        self.filter_price_to.setFixedSize(100, 30)
+        self.filter_price_to.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         self.filter_button = QPushButton("Фільтрувати")
+        self.filter_button.setFixedSize(150, 40)
+        self.filter_button.setStyleSheet(button_style)
+        self.filter_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.filter_button.clicked.connect(self.filter_products)
 
+        # Додавання елементів у layout
         self.filter_layout.addWidget(self.filter_category_label)
         self.filter_layout.addWidget(self.filter_category_combo)
         self.filter_layout.addWidget(self.filter_price_from_label)
@@ -53,8 +115,21 @@ class ProductsTab(QWidget):
         self.filter_layout.addWidget(self.filter_price_to)
         self.filter_layout.addWidget(self.filter_button)
 
-        self.layout.addLayout(self.filter_layout) 
+        # Додавання фільтра до головного layout
+        self.layout.addLayout(self.filter_layout)
 
+        filter_with_spacing = QVBoxLayout()
+        filter_with_spacing.addSpacing(24)
+        filter_with_spacing.addLayout(self.filter_layout)
+        filter_with_spacing.addSpacing(24)
+
+        self.layout.addLayout(filter_with_spacing)
+        self.setLayout(self.layout)
+
+    
+    
+    def filter_products(self):
+        print("Фільтрування товарів")
         # Таблиця
         self.table = QTableWidget()
         self.table.setColumnCount(6)

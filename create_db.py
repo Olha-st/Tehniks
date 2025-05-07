@@ -28,15 +28,42 @@ CREATE TABLE IF NOT EXISTS products (
 """)
 
 # 3. Таблиця клієнтів
+# cursor.execute("""
+# CREATE TABLE IF NOT EXISTS customers (
+#     id INTEGER PRIMARY KEY AUTOINCREMENT,
+#     name TEXT NOT NULL,
+#     phone TEXT NOT NULL,
+#     email TEXT,
+#     address TEXT
+# )
+# """)
+
+    # Увімкнення підтримки зовнішніх ключів
+cursor.execute("PRAGMA foreign_keys = ON;")
+
+# Таблиця користувачів
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS customers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    email TEXT,
-    address TEXT
-)
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('admin', 'user'))
+    );
 """)
+
+# Таблиця клієнтів — пов’язана з users через user_id
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        email TEXT,
+        address TEXT,
+        user_id INTEGER UNIQUE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+""")
+
 
 # 4. Таблиця замовлень
 cursor.execute("""
@@ -104,6 +131,16 @@ CREATE TABLE IF NOT EXISTS product_photos (
     image_path TEXT NOT NULL,
     FOREIGN KEY (product_id) REFERENCES products(id)
 )
+""")
+conn.commit()
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('admin', 'user'))
+    );
 """)
 conn.commit()
 

@@ -294,7 +294,7 @@ class OrdersTab(QWidget):
     def add_product_to_order(self, order_id, product_table, total_label, discount_value):
         # Діалог вибору товару
         products = self.get_all_products()
-        product_names = [p[1] for p in products]  
+        product_names = [p[1] for p in products]  # список назв товарів
 
         product_name, ok = QInputDialog.getItem(self, "Додати товар", "Оберіть товар:", product_names, editable=False)
         if not ok or not product_name:
@@ -365,35 +365,15 @@ class OrdersTab(QWidget):
         product_table.setItem(row, 1, QTableWidgetItem(str(quantity)))
         product_table.setItem(row, 2, QTableWidgetItem(str(price)))
 
-        # Стилізована червона кнопка видалення
+        # Кнопка видалення товару
         delete_btn = QPushButton("Видалити")
-        delete_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #ff6666;
-                color: white;
-                border-radius: 6px;
-                padding: 6px 12px;
-            }
-            QPushButton:hover {
-                background-color: #e64545;
-            }
-        """)
-        delete_btn.clicked.connect(lambda _, r=row: self.delete_product_from_order(r, order_id, product_table, total_label, discount_value))
-
-        # Центрування кнопки в комірці
-        btn_container = QWidget()
-        btn_layout = QHBoxLayout(btn_container)
-        btn_layout.addWidget(delete_btn)
-        btn_layout.setAlignment(Qt.AlignCenter)
-        btn_layout.setContentsMargins(0, 0, 0, 0)
-
-        product_table.setCellWidget(row, 3, btn_container)
+        delete_btn.clicked.connect(lambda _, r=row, oid=order_id: self.delete_product_from_order(r, oid, product_table, total_label, discount_value))
+        product_table.setCellWidget(row, 3, delete_btn)
 
         # Оновлення суми
         self.update_order_total(product_table, total_label, discount_value)
 
         QMessageBox.information(self, "Успіх", "Товар додано до замовлення.")
-
 
 
 
@@ -515,20 +495,7 @@ class OrdersTab(QWidget):
             QPushButton:hover {
                 background-color: #9370db;
             }
-
         """)
-
-        delete_button_style = """
-            QPushButton {
-                background-color: #ff6666;
-                color: white;
-                border-radius: 6px;
-                padding: 6px 12px;
-            }
-            QPushButton:hover {
-                background-color: #e64545;
-            }
-        """
 
         layout = QVBoxLayout()
         layout.setSpacing(15)
@@ -565,7 +532,8 @@ class OrdersTab(QWidget):
             product_table.setItem(row, 2, price_item)
 
             delete_btn = QPushButton("Видалити")
-            delete_btn.setStyleSheet(delete_button_style)
+            delete_btn.setStyleSheet("QPushButton { background-color: #ff6666; color: white; border-radius: 6px; padding: 6px 12px; }"
+                                    "QPushButton:hover { background-color: #e64545; }")
             delete_btn.clicked.connect(lambda _, r=row: self.delete_product_from_order(r, order_id, product_table, total_label, discount_value))
             btn_container = QWidget()
             btn_layout = QHBoxLayout(btn_container)

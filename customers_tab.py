@@ -10,9 +10,10 @@ class ClientsTab(QWidget):
     def __init__(self):
         super().__init__()
 
-        # Основний layout
+        # Основний вертикальний layout
         self.layout = QVBoxLayout()
 
+        # Стиль кнопок
         button_style = """
             QPushButton {
                 background-color: #B57EDC;
@@ -33,30 +34,102 @@ class ClientsTab(QWidget):
             }
         """
 
-        # Верхні кнопки
-        # Розміщення кнопок
+        # Горизонтальний layout для кнопок
         button_layout = QHBoxLayout()
-        button_layout.setContentsMargins(38, 38, 0, 38)  # Відступи: ліво 2см, верх/низ 1см, право 0
-        button_layout.setSpacing(76)  # Відстань між кнопками: 2 см
+        button_layout.setSpacing(76)  # Відстань між кнопками ≈ 2 см
+        button_layout.setAlignment(Qt.AlignLeft)
 
+        # Кнопка "Новий клієнт"
         self.add_button = QPushButton("Новий клієнт")
         self.add_button.setFixedSize(200, 40)
         self.add_button.setStyleSheet(button_style)
-        button_layout.addWidget(self.add_button, alignment=Qt.AlignLeft)
+        button_layout.addWidget(self.add_button)
 
+        # Кнопка "Оновити інформацію"
         self.edit_button = QPushButton("Оновити інформацію")
         self.edit_button.setFixedSize(200, 40)
         self.edit_button.setStyleSheet(button_style)
-        button_layout.addWidget(self.edit_button, alignment=Qt.AlignLeft)
-        # button_layout.addWidget(self.edit_button_button, alignment=Qt.AlignLeft)
+        button_layout.addWidget(self.edit_button)
 
+        # Кнопка "Видалити"
         self.delete_button = QPushButton("Видалити")
         self.delete_button.setFixedSize(200, 40)
         self.delete_button.setStyleSheet(button_style)
-        button_layout.addWidget(self.delete_button, alignment=Qt.AlignLeft)
-        # button_layout.addWidget(self.delete_button_button, alignment=Qt.AlignLeft)
+        button_layout.addWidget(self.delete_button)
 
-        self.layout.addLayout(button_layout)
+        # Вертикальний лейаут з відступами до і після блоку кнопок
+        buttons_with_spacing = QVBoxLayout()
+        buttons_with_spacing.addSpacing(24)               # Відступ над кнопками (1 см)
+        buttons_with_spacing.addLayout(button_layout)     # Самі кнопки
+        buttons_with_spacing.addSpacing(24)               # Відступ під кнопками (1 см)
+
+        # Додаємо в основний layout
+        self.layout.addLayout(buttons_with_spacing)
+
+        self.setLayout(self.layout)
+
+
+        # Горизонтальний layout для кнопок
+        # button_layout = QHBoxLayout()
+        # button_layout.setSpacing(30)  # Відстань між кнопками = 2 см
+        # button_layout.setAlignment(Qt.AlignLeft)
+
+        # button_style = """
+        #     QPushButton {
+        #         background-color: #B57EDC;
+        #         color: white;
+        #         font-size: 14px;
+        #         font-weight: bold;
+        #         padding: 6px 14px;
+        #         border: none;
+        #         border-radius: 8px;
+        #         min-width: 100px;
+        #         min-height: 32px;
+        #     }
+        #     QPushButton:hover {
+        #         background-color: #A070C4;
+        #     }
+        #     QPushButton:pressed {
+        #         background-color: #8E5CB5;
+        #     }
+        # """
+
+        # self.add_button = QPushButton("Додати клієнта")
+        # self.add_button.setFixedSize(200, 40)
+        # self.add_button.setStyleSheet(button_style)
+        # # self.create_button.clicked.connect(self.open_order_form)
+        # button_layout.addWidget(self.add_button)
+
+        # self.edit_button = QPushButton("Оновити інформацію")
+        # self.edit_button.setFixedSize(200, 40)
+        # self.edit_button.setStyleSheet(button_style)
+        # # self.delete_button.clicked.connect(self.delete_order)
+        # button_layout.addWidget(self.edit_button)
+
+        # self.delete_button = QPushButton("Видалити")
+        # self.delete_button.setFixedSize(200, 40)
+        # self.delete_button.setStyleSheet(button_style)
+        # # self.print_invoice_btn.clicked.connect(self.print_invoice)
+        # button_layout.addWidget(self.delete_button)
+
+        # # Відступ перед кнопками (1 см)
+        # # self.layout.addSpacing(20)
+
+        # # Додаємо layout з кнопками
+        # # self.layout.addLayout(button_layout)
+
+        # # Відступ після кнопок (1 см)
+        # self.layout.addSpacing(20)
+
+        # self.setLayout(self.layout)
+
+
+
+
+
+
+
+
 
         # Таблиця для відображення клієнтів
         self.table = QTableWidget()

@@ -66,7 +66,7 @@ def style_controls(
     for btn in [add_button, edit_button, delete_button, details_button, filter_button]:
         btn.setStyleSheet(button_style)
 
-    # Метки
+    # Мітки
     label_style = """
         QLabel {
             font-size: 14px;

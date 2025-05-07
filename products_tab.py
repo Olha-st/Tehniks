@@ -1,8 +1,8 @@
 # вкладка "Товари"
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QComboBox,
-    QTableWidgetItem, QMessageBox, QAbstractItemView, QLineEdit, QFileDialog
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QComboBox, QSpacerItem,
+    QTableWidgetItem, QMessageBox, QAbstractItemView, QLineEdit, QFileDialog, QSizePolicy
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QDialog
@@ -10,55 +10,96 @@ from product_dialog import ProductDialog
 from database import get_all_products, add_product, update_product, delete_product, get_category_names
 import sqlite3
 from styles import style_table, style_controls
+from functools import partial
+from PyQt5.QtGui import QColor
 
 
 class ProductsTab(QWidget):
     def __init__(self):
         super().__init__()
+
         self.layout = QVBoxLayout()
 
-        # Верхні кнопки
+        # Верхній відступ (1 см ≈ 38 пікселів)
+        top_spacer = QSpacerItem(0, 24, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.layout.addItem(top_spacer)
+
+        # Горизонтальне розміщення кнопок
         button_layout = QHBoxLayout()
+        button_layout.setAlignment(Qt.AlignLeft)
+
         self.add_button = QPushButton("Додати товар")
         self.add_button.setFixedSize(160, 60)
+
         self.edit_button = QPushButton("Редагувати товар")
         self.edit_button.setFixedSize(160, 60)
+
         self.delete_button = QPushButton("Видалити")
         self.delete_button.setFixedSize(160, 60)
+
         self.details_button = QPushButton("Деталі")
         self.details_button.setFixedSize(160, 60)
+
+        spacer = QSpacerItem(75, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
+
         button_layout.addWidget(self.add_button)
+        button_layout.addItem(spacer)
         button_layout.addWidget(self.edit_button)
+        button_layout.addItem(spacer)
         button_layout.addWidget(self.delete_button)
+        button_layout.addItem(spacer)
         button_layout.addWidget(self.details_button)
+
+        button_layout.addStretch()
         self.layout.addLayout(button_layout)
 
+        # Нижній відступ (1 см ≈ 38 пікселів)
+        bottom_spacer = QSpacerItem(0, 24, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.layout.addItem(bottom_spacer)
+
         self.filter_layout = QHBoxLayout()
+        self.filter_layout.setAlignment(Qt.AlignLeft)
+
         self.filter_category_label = QLabel("Обери категорію:")
         self.filter_category_combo = QComboBox()
-        self.filter_category_combo.addItem("Усі")  # перший пункт
+        self.filter_category_combo.addItem("Усі") 
         for name in get_category_names().values():
             self.filter_category_combo.addItem(name)
 
         self.filter_price_from_label = QLabel("Ціна від:")
         self.filter_price_from = QLineEdit()
         self.filter_price_from.setPlaceholderText("0")
+        self.filter_price_from.setFixedSize(150, 30)
 
         self.filter_price_to_label = QLabel("до:")
         self.filter_price_to = QLineEdit()
         self.filter_price_to.setPlaceholderText("10000")
+        self.filter_price_to.setFixedSize(150, 30)
 
         self.filter_button = QPushButton("Фільтрувати")
         self.filter_button.clicked.connect(self.filter_products)
 
+        # Додаємо віджети з відступами
         self.filter_layout.addWidget(self.filter_category_label)
         self.filter_layout.addWidget(self.filter_category_combo)
+
+        # Відступ 2 см перед "Ціна від:"
+        self.filter_layout.addItem(QSpacerItem(75, 0, QSizePolicy.Fixed, QSizePolicy.Minimum))
         self.filter_layout.addWidget(self.filter_price_from_label)
         self.filter_layout.addWidget(self.filter_price_from)
+
         self.filter_layout.addWidget(self.filter_price_to_label)
         self.filter_layout.addWidget(self.filter_price_to)
+
+        # Відступ 2 см перед кнопкою "Фільтрувати"
+        self.filter_layout.addItem(QSpacerItem(75, 0, QSizePolicy.Fixed, QSizePolicy.Minimum))
         self.filter_layout.addWidget(self.filter_button)
 
+        self.filter_layout.addStretch()
+
+
+        
+        
         style_controls(
             self.add_button,
             self.edit_button,
@@ -79,6 +120,7 @@ class ProductsTab(QWidget):
 
 
         self.layout.addLayout(self.filter_layout) 
+        self.layout.addSpacing(24)
 
         # Таблиця
         self.table = QTableWidget()
@@ -100,10 +142,10 @@ class ProductsTab(QWidget):
 
         self.table.setColumnWidth(0, 50) #id
         self.table.setColumnWidth(1, 300)  # назва
-        self.table.setColumnWidth(2, 80)  
+        self.table.setColumnWidth(2, 100)  
         self.table.setColumnWidth(3, 100) 
-        self.table.setColumnWidth(4, 120)
-        self.table.setColumnWidth(5, 250)
+        self.table.setColumnWidth(4, 150)
+        self.table.setColumnWidth(5, 300)
 
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.layout.addWidget(self.table)
@@ -119,17 +161,16 @@ class ProductsTab(QWidget):
 
 
 
+
     def load_data(self):
         self.table.setRowCount(0)
         products = get_all_products()
         category_names = get_category_names()
 
-        # Отримання значень фільтрів
         selected_category = self.filter_category_combo.currentText()
         min_price = self.filter_price_from.text()
         max_price = self.filter_price_to.text()
 
-        # Фільтрація
         filtered_products = []
         for prod in products:
             if selected_category != "Усі":
@@ -145,61 +186,62 @@ class ProductsTab(QWidget):
 
             filtered_products.append(prod)
 
-        # Розміщення товарів без залишку в кінці
         available = [p for p in filtered_products if p[4] > 0]
         out_of_stock = [p for p in filtered_products if p[4] == 0]
         sorted_products = available + out_of_stock
 
         self.table.setRowCount(len(sorted_products))
 
+        button_style = """
+            QPushButton {
+                background-color: #B57EDC;
+                color: white;
+                padding: 5px 10px;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #A070C4;
+            }
+            QPushButton:pressed {
+                background-color: #8E5CB5;
+            }
+        """
+
         for row, prod in enumerate(sorted_products):
-            self.table.setItem(row, 0, QTableWidgetItem(str(prod[0])))  # ID
-            self.table.setItem(row, 1, QTableWidgetItem(prod[1]))       # Назва
-            self.table.setItem(row, 2, QTableWidgetItem(str(prod[3])))  # Ціна
+            gray_background = prod[4] == 0
 
-            quantity_item = QTableWidgetItem(str(prod[4]))              # Кількість
+            id_item = QTableWidgetItem(str(prod[0]))
+            name_item = QTableWidgetItem(prod[1])
+            price_item = QTableWidgetItem(str(prod[3]))
+            quantity_item = QTableWidgetItem(str(prod[4]))
             quantity_item.setTextAlignment(Qt.AlignCenter)
+            category_item = QTableWidgetItem(category_names.get(prod[5], "Невідомо"))
+
+            if gray_background:
+                for item in [id_item, name_item, price_item, quantity_item, category_item]:
+                    item.setBackground(QColor("#eeeeee"))  # світло-сірий
+
+            self.table.setItem(row, 0, id_item)
+            self.table.setItem(row, 1, name_item)
+            self.table.setItem(row, 2, price_item)
             self.table.setItem(row, 3, quantity_item)
-           
+            self.table.setItem(row, 4, category_item)
 
-            category_name = category_names.get(prod[5], "Невідомо")
-            self.table.setItem(row, 4, QTableWidgetItem(category_name))
-
-            # Кнопки: одна "Додати фото" + одна "Переглянути фото"
-            image_buttons_layout = QHBoxLayout()
-
-            button_style = """
-                QPushButton {
-                    background-color: #B57EDC;         /* Medium Purple */
-                    color: white;
-                    padding: 5px 10px;
-                    border: none;
-                    border-radius: 8px;
-                    font-size: 14px;
-                }
-                QPushButton:hover {
-                    background-color: #A070C4;         /* Darker purple on hover */
-                }
-                QPushButton:pressed {
-                    background-color: #8E5CB5;         /* Another tone when pressed */
-                }
-            """
-
-            # Кнопка додавання фото
             add_photo_button = QPushButton("Додати фото")
             add_photo_button.setStyleSheet(button_style)
-            add_photo_button.clicked.connect(lambda _, product_id=prod[0]: self.add_product_image(product_id))
-            image_buttons_layout.addWidget(add_photo_button)
+            add_photo_button.setFixedSize(110, 30)
+            add_photo_button.clicked.connect(partial(self.add_product_image, prod[0]))
 
-            # Кнопка перегляду фото
             view_photos_button = QPushButton("Переглянути")
             view_photos_button.setStyleSheet(button_style)
-            view_photos_button.clicked.connect(lambda _, product_id=prod[0]: self.view_images_slider(product_id))
+            view_photos_button.setFixedSize(110, 30)
+            view_photos_button.clicked.connect(partial(self.view_images_slider, prod[0]))
+
+            image_buttons_layout = QHBoxLayout()
+            image_buttons_layout.addWidget(add_photo_button)
             image_buttons_layout.addWidget(view_photos_button)
-            add_photo_button.setFixedSize(110, 30)
-            view_photos_button.setFixedSize(110,30)
-
-
 
             image_widget = QWidget()
             image_widget.setLayout(image_buttons_layout)
@@ -434,24 +476,60 @@ class ProductsTab(QWidget):
         products = cursor.fetchall()
         conn.close()
 
-        self.table.setRowCount(0)
+        
+
+
+        # Очищаємо таблицю перед виведенням нових даних
+        self.table.setRowCount(0)  # Очищаємо таблицю
+
         category_names = get_category_names()
+        # self.table.setHorizontalHeaderLabels(["ID", "Назва", "Категорія", "Ціна", "Кількість", "Фото"])
         for row_num, product in enumerate(products):
-            self.table.insertRow(row_num)
             prod_id, name, category_id, price, quantity = product
+            self.table.insertRow(row_num)  # Вставка нового рядка
+
             self.table.setItem(row_num, 0, QTableWidgetItem(str(prod_id)))
             self.table.setItem(row_num, 1, QTableWidgetItem(name))
-            self.table.setItem(row_num, 2, QTableWidgetItem(category_names.get(category_id, "Невідомо")))
-            self.table.setItem(row_num, 3, QTableWidgetItem(f"{price:.2f}"))
-            self.table.setItem(row_num, 4, QTableWidgetItem(str(quantity)))
+            self.table.setItem(row_num, 2, QTableWidgetItem(f"{price:.2f}"))
+            self.table.setItem(row_num, 3, QTableWidgetItem(str(quantity)))
+            self.table.setItem(row_num, 4, QTableWidgetItem(category_names.get(category_id, "Невідомо")))
+            
+            
 
-            details_button = QPushButton("Деталі")
-            details_button.clicked.connect(lambda _, pid=prod_id: self.show_description(pid))
-            self.table.setCellWidget(row_num, 5, details_button)
+            # Кнопки для фото
+            image_buttons_layout = QHBoxLayout()
+            button_style = """
+                QPushButton {
+                    background-color: #B57EDC;   
+                    color: white;
+                    padding: 5px 10px;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 14px;
+                }
+                QPushButton:hover {
+                    background-color: #A070C4; 
+                }
+                QPushButton:pressed {
+                    background-color: #8E5CB5;
+                }
+            """
+            add_photo_button = QPushButton("Додати фото")
+            add_photo_button.setStyleSheet(button_style)
+            add_photo_button.clicked.connect(partial(self.add_product_image, prod_id))
+            add_photo_button.setFixedSize(110, 30)
+            image_buttons_layout.addWidget(add_photo_button)
 
-            photo_button = QPushButton("Показати")
-            photo_button.clicked.connect(lambda _, pid=prod_id: self.show_photo(pid))
-            self.table.setCellWidget(row_num, 6, photo_button)
+            view_photos_button = QPushButton("Переглянути")
+            view_photos_button.setStyleSheet(button_style)
+            view_photos_button.clicked.connect(partial(self.view_images_slider, prod_id))
+            view_photos_button.setFixedSize(110, 30)
+            image_buttons_layout.addWidget(view_photos_button)
+
+            image_widget = QWidget()
+            image_widget.setLayout(image_buttons_layout)
+            self.table.setCellWidget(row_num, 5, image_widget)
+
 
     def get_category_id_by_name(self, name):
         categories = get_category_names()
@@ -459,3 +537,21 @@ class ProductsTab(QWidget):
             if cat_name == name:
                 return cat_id
         return None
+    
+
+    def disable_editing(self):
+        # Вимкнення кнопок для редагування
+        self.add_button.setEnabled(False)
+        self.edit_button.setEnabled(False)
+        self.delete_button.setEnabled(False)
+
+        # Оновлення таблиці без кнопки "Додати фото"
+        for row in range(self.table.rowCount()):
+            cell_widget = self.table.cellWidget(row, 5)
+            if isinstance(cell_widget, QWidget):
+                layout = cell_widget.layout()
+                if layout is not None:
+                    for i in reversed(range(layout.count())):
+                        widget = layout.itemAt(i).widget()
+                        if isinstance(widget, QPushButton) and widget.text() == "Додати фото":
+                            widget.setVisible(False)
