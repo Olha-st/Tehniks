@@ -62,7 +62,7 @@ def get_all_clients():
     """ Отримати всіх клієнтів з бази даних """
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM customers")  # Ваш запит для отримання всіх клієнтів
+    cursor.execute("SELECT * FROM customers")  
     clients = cursor.fetchall()
     conn.close()
     return clients
@@ -343,10 +343,10 @@ def get_order_items_by_order_id(order_id):
 
 
 def update_product_quantity(self, product_id, quantity):
-    conn = get_connection()  # Replace with your actual database connection function
+    conn = get_connection()  
     cur = conn.cursor()
     
-    # Assuming you want to subtract the ordered quantity from the stock_quantity
+
     cur.execute("""
         UPDATE products
         SET stock_quantity = stock_quantity - ?

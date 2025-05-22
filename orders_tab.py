@@ -1,18 +1,18 @@
-from PyQt5.QtWidgets import QWidget,QDoubleSpinBox, QVBoxLayout, QTableWidget,QHeaderView, QPushButton, QHBoxLayout, QComboBox, QLabel, QLineEdit,QInputDialog, QSpinBox, QTableWidgetItem, QMessageBox, QDialog, QFormLayout, QFileDialog
+from PyQt5.QtWidgets import (QWidget,QDoubleSpinBox, QVBoxLayout, QTableWidget,QHeaderView, QTabWidget,
+                             QPushButton, QHBoxLayout, QComboBox, QLabel, QLineEdit,QInputDialog, 
+                             QSpinBox, QTableWidgetItem, QMessageBox, QDialog, QFormLayout, QFileDialog)
 from database import get_all_orders, add_order, get_customers, get_products, add_order_item
 from database import get_connection, update_customer_discount
 from functools import partial
 import sqlite3
 from PyQt5.QtCore import Qt
-from styles import style_table, style_controls
+from styles import style_table
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
 from PyQt5.QtWidgets import QPushButton
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-
-
-
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 
 
@@ -41,8 +41,7 @@ class OrdersTab(QWidget):
                 padding: 6px 14px;
                 border: none;
                 border-radius: 8px;
-                min-width: 100px;
-                min-height: 32px;
+
             }
             QPushButton:hover {
                 background-color: #A070C4;
@@ -70,6 +69,13 @@ class OrdersTab(QWidget):
         self.print_invoice_btn.clicked.connect(self.print_invoice)
         button_layout.addWidget(self.print_invoice_btn)
 
+        self.stats_button = QPushButton("Статистика")
+        self.stats_button.setFixedSize(200, 40)
+        self.stats_button.setStyleSheet(button_style)
+        self.stats_button.clicked.connect(self.show_statistics)
+        button_layout.addWidget(self.stats_button)
+
+
         # Відступ перед кнопками (1 см)
         self.layout.addSpacing(20)
 
@@ -80,9 +86,6 @@ class OrdersTab(QWidget):
         self.layout.addSpacing(20)
 
         self.setLayout(self.layout)
-
-
-
 
 
 
@@ -151,7 +154,6 @@ class OrdersTab(QWidget):
             self.table.setItem(row, 3, QTableWidgetItem(order_date))
             self.table.setItem(row, 4, QTableWidgetItem(status))
 
-            # Кнопка "Деталі" з бузковим стилем
             details_btn = QPushButton("Деталі")
             details_btn.setFixedSize(130, 40)
             details_btn.setStyleSheet(button_style)
@@ -235,6 +237,10 @@ class OrdersTab(QWidget):
         self.products_table = QTableWidget()
         self.products_table.setColumnCount(3)
         self.products_table.setHorizontalHeaderLabels(["Назва", "Кількість", "Ціна"])
+        style_table(self.products_table)
+        self.table.setColumnWidth(0, 150) 
+        self.table.setColumnWidth(1, 200) 
+        self.table.setColumnWidth(2, 100)  
 
         form_layout.addRow(self.total_label)
         save_button = QPushButton("Зберегти замовлення")
@@ -393,13 +399,6 @@ class OrdersTab(QWidget):
         self.update_order_total(product_table, total_label, discount_value)
 
         QMessageBox.information(self, "Успіх", "Товар додано до замовлення.")
-
-
-
-
-
-
-
 
 
     def save_order(self):
@@ -628,32 +627,6 @@ class OrdersTab(QWidget):
         total_label.setText(f"Сума без знижки: ₴{total:.2f} | Із знижкою {discount_value}%: ₴{discounted:.2f}")
 
 
-
-
-
-    # def delete_product_from_order(self, row, order_id, product_table, total_label, discount_value):
-    #     product_name_item = product_table.item(row, 0)
-    #     if product_name_item is None:
-    #         QMessageBox.warning(self, "Помилка", "Не вдалося отримати назву товару.")
-    #         return
-
-    #     product_name = product_name_item.text()
-
-    #     # Видалення з бази
-    #     conn = get_connection()
-    #     cur = conn.cursor()
-    #     cur.execute("SELECT id FROM products WHERE name = ?", (product_name,))
-    #     result = cur.fetchone()
-    #     if not result:
-    #         QMessageBox.warning(self, "Помилка", f"Товар '{product_name}' не знайдено в базі даних.")
-    #         conn.close()
-    #         return
-
-    #     product_id = result[0]
-    #     cur.execute("DELETE FROM order_items WHERE order_id = ? AND product_id = ?", (order_id, product_id))
-    #     conn.commit()
-    #     conn.close()
-
     def delete_product_from_order(self, row, order_id, product_table, total_label, discount_value):
         # Отримуємо назву товару
         product_name_item = product_table.item(row, 0)
@@ -702,66 +675,162 @@ class OrdersTab(QWidget):
 
 
 
+    # def save_order_changes(self, order_id, product_table, dialog, total_label, discount_value):
+    #     base_amount = 0
+
+    #     # Проходимо по всіх рядках таблиці товарів
+    #     for row in range(product_table.rowCount()):
+    #         product_name_item = product_table.item(row, 0)
+    #         quantity_item = product_table.item(row, 1)
+    #         price_item = product_table.item(row, 2)
+
+    #         if not product_name_item or not quantity_item or not price_item:
+    #             continue  # Пропустити порожні рядки
+
+    #         product_name = product_name_item.text()
+    #         try:
+    #             # Спробуємо отримати кількість та ціну
+    #             quantity = int(quantity_item.text())
+    #             price = float(price_item.text().replace("₴", "").strip())  # Видаляємо ₴ та пробіли
+    #         except ValueError:
+    #             continue  # Пропустити некоректні значення
+
+    #         product_id = self.get_product_id_by_name(product_name)
+    #         if product_id is not None:
+    #             # Оновлюємо дані в таблиці order_items
+    #             self.update_order_item(order_id, product_id, quantity, price)
+    #             # Оновлюємо кількість товару на складі
+    #             self.update_product_quantity(product_id, quantity)
+
+    #             base_amount += quantity * price  # Обчислюємо базову суму
+
+    #     # Обчислюємо загальну суму після знижки
+    #     total_amount = base_amount * (1 - discount_value / 100)
+
+    #     # Оновлюємо інформацію в таблиці orders
+    #     conn = get_connection()
+    #     cur = conn.cursor()
+    #     cur.execute("""
+    #         UPDATE orders
+    #         SET base_amount = ?, total_amount = ?
+    #         WHERE id = ?
+    #     """, (base_amount, total_amount, order_id))
+
+    #     conn.commit()
+    #     conn.close()
+
+    #     # Оновлення вкладки Оплати
+    #     if self.payments_tab:
+    #         self.payments_tab.load_data()
+
+    #     # Оновлення вкладки Клієнти
+    #     if self.customers_tab:
+    #         self.customers_tab.load_data()
+
+    #     # Інформуємо користувача
+    #     QMessageBox.information(self, "Збережено", "Зміни збережено успішно.")
+
+    #     # Закриваємо діалогове вікно
+    #     # dialog.accept()
+
+    #     # Оновлюємо дані
+    #     self.load_data()
+
     def save_order_changes(self, order_id, product_table, dialog, total_label, discount_value):
         base_amount = 0
-
-        # Проходимо по всіх рядках таблиці товарів
-        for row in range(product_table.rowCount()):
-            product_name_item = product_table.item(row, 0)
-            quantity_item = product_table.item(row, 1)
-            price_item = product_table.item(row, 2)
-
-            if not product_name_item or not quantity_item or not price_item:
-                continue  # Пропустити порожні рядки
-
-            product_name = product_name_item.text()
-            try:
-                # Спробуємо отримати кількість та ціну
-                quantity = int(quantity_item.text())
-                price = float(price_item.text().replace("₴", "").strip())  # Видаляємо ₴ та пробіли
-            except ValueError:
-                continue  # Пропустити некоректні значення
-
-            product_id = self.get_product_id_by_name(product_name)
-            if product_id is not None:
-                # Оновлюємо дані в таблиці order_items
-                self.update_order_item(order_id, product_id, quantity, price)
-                # Оновлюємо кількість товару на складі
-                self.update_product_quantity(product_id, quantity)
-
-                base_amount += quantity * price  # Обчислюємо базову суму
-
-        # Обчислюємо загальну суму після знижки
-        total_amount = base_amount * (1 - discount_value / 100)
-
-        # Оновлюємо інформацію в таблиці orders
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("""
-            UPDATE orders
-            SET base_amount = ?, total_amount = ?
-            WHERE id = ?
-        """, (base_amount, total_amount, order_id))
 
-        conn.commit()
-        conn.close()
+        try:
+            for row in range(product_table.rowCount()):
+                product_name_item = product_table.item(row, 0)
+                quantity_item = product_table.item(row, 1)
+                price_item = product_table.item(row, 2)
 
-        # Оновлення вкладки Оплати
-        if self.payments_tab:
-            self.payments_tab.load_data()
+                if not product_name_item or not quantity_item or not price_item:
+                    continue  # Пропустити порожні рядки
 
-        # Оновлення вкладки Клієнти
-        if self.customers_tab:
-            self.customers_tab.load_data()
+                product_name = product_name_item.text()
+                try:
+                    quantity = int(quantity_item.text())
+                    price = float(price_item.text().replace("₴", "").strip())
+                except ValueError:
+                    continue  # Пропустити некоректні значення
 
-        # Інформуємо користувача
-        QMessageBox.information(self, "Збережено", "Зміни збережено успішно.")
+                # Отримуємо product_id і поточну кількість на складі
+                cur.execute("SELECT id, quantity FROM products WHERE name = ?", (product_name,))
+                product_data = cur.fetchone()
+                if not product_data:
+                    continue
 
-        # Закриваємо діалогове вікно
-        # dialog.accept()
+                product_id, stock_quantity = product_data
 
-        # Оновлюємо дані
-        self.load_data()
+                # Отримуємо стару кількість у замовленні
+                cur.execute("""
+                    SELECT quantity FROM order_items
+                    WHERE order_id = ? AND product_id = ?
+                """, (order_id, product_id))
+                old_data = cur.fetchone()
+                old_quantity = old_data[0] if old_data else 0
+
+                # Обчислюємо зміну (дельту)
+                delta = quantity - old_quantity
+
+                # Перевірка на наявність достатньої кількості товару
+                if delta > 0 and stock_quantity < delta:
+                    raise Exception(f"Недостатньо товару '{product_name}' на складі. Доступно: {stock_quantity}, потрібно: {delta}.")
+
+                # Оновлюємо order_items
+                if old_data:
+                    cur.execute("""
+                        UPDATE order_items
+                        SET quantity = ?, unit_price = ?
+                        WHERE order_id = ? AND product_id = ?
+                    """, (quantity, price, order_id, product_id))
+                else:
+                    cur.execute("""
+                        INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+                        VALUES (?, ?, ?, ?)
+                    """, (order_id, product_id, quantity, price))
+
+                # Оновлюємо склад на основі різниці
+                cur.execute("""
+                    UPDATE products
+                    SET quantity = quantity - ?
+                    WHERE id = ?
+                """, (delta, product_id))
+
+                base_amount += quantity * price
+
+            # Обчислення суми зі знижкою
+            total_amount = base_amount * (1 - discount_value / 100)
+
+            cur.execute("""
+                UPDATE orders
+                SET base_amount = ?, total_amount = ?
+                WHERE id = ?
+            """, (base_amount, total_amount, order_id))
+
+            conn.commit()
+
+            QMessageBox.information(self, "Збережено", "Зміни збережено успішно.")
+            dialog.accept()
+
+            if self.payments_tab:
+                self.payments_tab.load_data()
+
+            if self.customers_tab:
+                self.customers_tab.load_data()
+
+            self.load_data()
+
+        except Exception as e:
+            conn.rollback()
+            QMessageBox.warning(self, "Помилка", f"Не вдалося зберегти зміни:\n{str(e)}")
+
+        finally:
+            conn.close()
+
 
 
     def get_database_connection(self):
@@ -898,6 +967,33 @@ class OrdersTab(QWidget):
         return int(self.table.item(selected_row, 0).text())
 
 
+    # def delete_order(self):
+    #     order_id = self.get_selected_order_id()
+    #     if order_id is None:
+    #         return
+
+    #     confirm = QMessageBox.question(
+    #         self, "Підтвердження", f"Ви впевнені, що хочете видалити замовлення №{order_id}?",
+    #         QMessageBox.Yes | QMessageBox.No
+    #     )
+
+    #     if confirm == QMessageBox.Yes:
+    #         conn = get_connection()
+    #         cur = conn.cursor()
+
+    #         # Видалити товари замовлення
+    #         cur.execute("DELETE FROM order_items WHERE order_id = ?", (order_id,))
+    #         # Видалити саме замовлення
+    #         cur.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+    #         conn.commit()
+    #         conn.close()
+
+    #         QMessageBox.information(self, "Успіх", "Замовлення видалено.")
+    #         self.load_data()
+
+    #         if self.payments_tab:
+    #             self.payments_tab.load_data()
+
     def delete_order(self):
         order_id = self.get_selected_order_id()
         if order_id is None:
@@ -912,18 +1008,33 @@ class OrdersTab(QWidget):
             conn = get_connection()
             cur = conn.cursor()
 
-            # Видалити товари замовлення
+            # 1. Отримати список товарів і кількостей у замовленні
+            cur.execute("""
+                SELECT product_id, quantity FROM order_items WHERE order_id = ?
+            """, (order_id,))
+            items = cur.fetchall()
+
+            # 2. Повернути кожен товар на склад
+            for product_id, quantity in items:
+                cur.execute("""
+                    UPDATE products
+                    SET quantity = quantity + ?
+                    WHERE id = ?
+                """, (quantity, product_id))
+
+            # 3. Видалити записи з order_items
             cur.execute("DELETE FROM order_items WHERE order_id = ?", (order_id,))
-            # Видалити саме замовлення
+            # 4. Видалити саме замовлення
             cur.execute("DELETE FROM orders WHERE id = ?", (order_id,))
             conn.commit()
             conn.close()
 
-            QMessageBox.information(self, "Успіх", "Замовлення видалено.")
+            QMessageBox.information(self, "Успіх", "Замовлення видалено і товари повернуто на склад.")
             self.load_data()
 
             if self.payments_tab:
                 self.payments_tab.load_data()
+
 
     def restrict_user_mode(self):
         # Доступна лише кнопка "Створити замовлення"
@@ -932,11 +1043,6 @@ class OrdersTab(QWidget):
         # Забороняємо/вимикаємо інші кнопки та таблицю
         self.delete_button.setEnabled(False)
         self.table.setDisabled(True)
-
-
-    
-
-
 
 
     def print_invoice(self):
@@ -1039,6 +1145,140 @@ class OrdersTab(QWidget):
         c.save()
 
         QMessageBox.information(self, "Готово", f"Чек збережено як {file_path}")
+
+
+
+
+    def show_statistics(self):
+        conn = sqlite3.connect("appliance_store.db")
+        cursor = conn.cursor()
+
+        # --- Дані для продажів у грн ---
+        cursor.execute("""
+            SELECT 
+                categories.name AS category_name,
+                SUM(order_items.quantity * order_items.unit_price) AS total_sales
+            FROM order_items
+            JOIN products ON order_items.product_id = products.id
+            JOIN categories ON products.category_id = categories.id
+            GROUP BY categories.id
+            ORDER BY total_sales DESC
+        """)
+        sales_results = cursor.fetchall()
+        sales_dict = {row[0]: row[1] for row in sales_results}
+
+        # --- Дані для кількості продажів ---
+        cursor.execute("""
+            SELECT 
+                categories.name AS category_name,
+                SUM(order_items.quantity) AS total_quantity
+            FROM order_items
+            JOIN products ON order_items.product_id = products.id
+            JOIN categories ON products.category_id = categories.id
+            GROUP BY categories.id
+            ORDER BY total_quantity DESC
+        """)
+        quantity_results = cursor.fetchall()
+        quantity_dict = {row[0]: row[1] for row in quantity_results}
+
+        conn.close()
+
+        categories = list(sales_dict.keys())
+
+        # --- Створення діалогу ---
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Статистика продажів")
+        layout = QVBoxLayout()
+        tabs = QTabWidget()
+        tabs.setTabPosition(QTabWidget.West)
+
+        # --- Вкладка 1: Таблиця ---
+        table_tab = QWidget()
+        table_layout = QVBoxLayout()
+
+        # Основна таблиця
+        table = QTableWidget()
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["Категорія", "Сума продажів (грн)", "Кількість (шт)"])
+        style_table(table)
+        table.setColumnWidth(0, 300) 
+        table.setColumnWidth(1, 200) 
+        table.setColumnWidth(2, 180)  
+        table.setRowCount(len(categories))
+
+        for row_idx, category in enumerate(categories):
+            total_sales = sales_dict.get(category, 0)
+            total_quantity = quantity_dict.get(category, 0)
+            table.setItem(row_idx, 0, QTableWidgetItem(category))
+            table.setItem(row_idx, 1, QTableWidgetItem(f"{total_sales:.2f}"))
+            table.setItem(row_idx, 2, QTableWidgetItem(str(total_quantity)))
+
+        # ТОП-3 за сумою
+        top_3_sales = sorted(sales_results, key=lambda x: x[1], reverse=True)[:3]
+        top_sales_text = "ТОП-3 за сумою:\n" + "\n".join(
+            [f"{i+1}. {cat} – {amt:.2f} грн" for i, (cat, amt) in enumerate(top_3_sales)]
+        )
+        top_sales_label = QLabel(top_sales_text)
+        top_sales_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+
+        # ТОП-3 за кількістю
+        top_3_quantity = sorted(quantity_results, key=lambda x: x[1], reverse=True)[:3]
+        top_qty_text = "ТОП-3 за кількістю:\n" + "\n".join(
+            [f"{i+1}. {cat} – {qty} шт" for i, (cat, qty) in enumerate(top_3_quantity)]
+        )
+        top_qty_label = QLabel(top_qty_text)
+        top_qty_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+
+        # Додати до layout
+        table_layout.addWidget(table)
+        table_layout.addWidget(top_sales_label)
+        table_layout.addWidget(top_qty_label)
+        table_tab.setLayout(table_layout)
+        tabs.addTab(table_tab, "Таблиця")
+
+        # --- Вкладка 2: Графік суми продажів ---
+        chart_tab = QWidget()
+        chart_layout = QVBoxLayout()
+
+        fig1 = Figure(figsize=(6, 4))
+        canvas1 = FigureCanvas(fig1)
+        ax1 = fig1.add_subplot(111)
+
+        ax1.bar(categories, [sales_dict[c] for c in categories], color='skyblue')
+        ax1.set_title("Продажі за категоріями")
+        ax1.set_ylabel("Сума продажів (грн)")
+        ax1.set_xticks(range(len(categories)))
+        ax1.set_xticklabels(categories, rotation=60, ha='right')
+
+        fig1.tight_layout()
+        chart_layout.addWidget(canvas1)
+        chart_tab.setLayout(chart_layout)
+        tabs.addTab(chart_tab, "Діаграма (грн)")
+
+        # --- Вкладка 3: Графік кількості продажів ---
+        quantity_tab = QWidget()
+        quantity_layout = QVBoxLayout()
+
+        fig2 = Figure(figsize=(6, 4))
+        canvas2 = FigureCanvas(fig2)
+        ax2 = fig2.add_subplot(111)
+
+        ax2.bar(categories, [quantity_dict[c] for c in categories], color='lightgreen')
+        ax2.set_title("Кількість проданих товарів за категоріями")
+        ax2.set_ylabel("Кількість товарів")
+        ax2.set_xticks(range(len(categories)))
+        ax2.set_xticklabels(categories, rotation=60, ha='right')
+
+        fig2.tight_layout()
+        quantity_layout.addWidget(canvas2)
+        quantity_tab.setLayout(quantity_layout)
+        tabs.addTab(quantity_tab, "Діаграма (шт)")
+
+        # --- Завершення ---
+        layout.addWidget(tabs)
+        dialog.setLayout(layout)
+        dialog.resize(800, 550)
+        dialog.exec_()
 
 
 

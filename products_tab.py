@@ -29,16 +29,16 @@ class ProductsTab(QWidget):
         button_layout.setAlignment(Qt.AlignLeft)
 
         self.add_button = QPushButton("Додати товар")
-        self.add_button.setFixedSize(160, 60)
+        self.add_button.setFixedSize(200, 40)
 
         self.edit_button = QPushButton("Редагувати товар")
-        self.edit_button.setFixedSize(160, 60)
+        self.edit_button.setFixedSize(200, 40)
 
         self.delete_button = QPushButton("Видалити")
-        self.delete_button.setFixedSize(160, 60)
+        self.delete_button.setFixedSize(200, 40)
 
         self.details_button = QPushButton("Деталі")
-        self.details_button.setFixedSize(160, 60)
+        self.details_button.setFixedSize(200, 40)
 
         spacer = QSpacerItem(75, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
 
@@ -77,6 +77,7 @@ class ProductsTab(QWidget):
         self.filter_price_to.setFixedSize(150, 30)
 
         self.filter_button = QPushButton("Фільтрувати")
+        self.filter_button.setFixedSize(200, 40)
         self.filter_button.clicked.connect(self.filter_products)
 
         # Додаємо віджети з відступами

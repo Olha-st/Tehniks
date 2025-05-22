@@ -53,8 +53,7 @@ def style_controls(
             padding: 6px 14px;
             border: none;
             border-radius: 8px;
-            min-width: 100px;
-            min-height: 32px;
+
         }
         QPushButton:hover {
             background-color: #A070C4;

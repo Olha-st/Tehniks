@@ -23,8 +23,7 @@ class ClientsTab(QWidget):
                 padding: 6px 14px;
                 border: none;
                 border-radius: 8px;
-                min-width: 100px;
-                min-height: 32px;
+
             }
             QPushButton:hover {
                 background-color: #A070C4;
@@ -122,13 +121,6 @@ class ClientsTab(QWidget):
         # self.layout.addSpacing(20)
 
         # self.setLayout(self.layout)
-
-
-
-
-
-
-
 
 
         # Таблиця для відображення клієнтів

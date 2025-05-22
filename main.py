@@ -7,18 +7,141 @@ from styles import style_table
 import sqlite3
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLineEdit, QPushButton, QLabel, QSpacerItem,
-    QMessageBox, QApplication, QTabWidget, QMainWindow, QHBoxLayout, QSizePolicy
+    QMessageBox, QApplication, QTabWidget, QMainWindow, QHBoxLayout, QSizePolicy, QCheckBox
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 import sqlite3
 import sys
 
+# class LoginDialog(QDialog):
+#     def __init__(self):
+#         super().__init__()
+#         self.setWindowTitle("Вхід")
+#         self.setFixedSize(400, 450)
+#         self.setStyleSheet("""
+#             QDialog {
+#                 background-color: #F4E8FF;
+#             }
+#             QLabel {
+#                 font-weight: bold;
+#             }
+#             QLineEdit, QPushButton {
+#                 padding: 6px;
+#                 border-radius: 6px;
+#             }
+#             QPushButton {
+#                 background-color: #B57EDC;
+#                 color: white;
+#                 font-weight: bold;
+#             }
+#         """)
+
+#         main_layout = QVBoxLayout()
+
+#         # Додаємо зображення
+#         image_label = QLabel()
+#         pixmap = QPixmap("logo.jpg")
+#         image_label.setPixmap(pixmap.scaledToWidth(150))  # масштабування
+#         if not pixmap.isNull():
+#             image_label.setPixmap(pixmap.scaledToWidth(200))
+#         else:
+#             image_label.setText("Зображення не знайдено")
+#         image_label.setAlignment(Qt.AlignCenter)
+#         main_layout.addWidget(image_label)
+
+#         # Привітальний текст
+#         welcome_label = QLabel("🌟 Авторизуйся\nта користуйся перевагами магазину!")
+#         welcome_label.setAlignment(Qt.AlignCenter)
+#         welcome_label.setStyleSheet("""
+#             QLabel {
+#                 font-size: 11pt;
+#                 font-weight: bold;
+#                 color: #5A2A83;
+#                 margin-bottom: 10px;
+#             }
+#         """)
+#         main_layout.addWidget(welcome_label)
+
+
+#         # Форма
+#         form_layout = QFormLayout()
+#         self.username_input = QLineEdit()
+#         self.password_input = QLineEdit()
+#         self.password_input.setEchoMode(QLineEdit.Password)
+
+#         form_layout.addRow("Логін:", self.username_input)
+#         form_layout.addRow("Пароль:", self.password_input)
+
+#         # Додаємо відступ 1 см після поля пароля
+#         form_layout.addItem(QSpacerItem(0, 18, QSizePolicy.Minimum, QSizePolicy.Fixed))
+
+#         # Кнопки
+#         self.login_btn = QPushButton("Увійти")
+#         self.register_btn = QPushButton("Реєстрація")
+#         self.login_btn.setFixedSize(120, 40)
+#         self.register_btn.setFixedSize(120, 40)
+
+#         self.login_btn.clicked.connect(self.try_login)
+#         self.register_btn.clicked.connect(self.register_user)
+
+#         buttons_layout = QHBoxLayout()
+#         buttons_layout.setAlignment(Qt.AlignCenter)
+#         buttons_layout.addSpacing(10)
+#         buttons_layout.addWidget(self.login_btn)
+#         buttons_layout.addSpacing(10)
+#         buttons_layout.addWidget(self.register_btn)
+#         buttons_layout.addSpacing(10)
+
+#         form_layout.addRow("", buttons_layout)
+
+#         main_layout.addLayout(form_layout)
+#         self.setLayout(main_layout)
+#         self.user_role = None
+
+
+#     def try_login(self):
+#         username = self.username_input.text().strip()
+#         password = self.password_input.text().strip()
+
+#         conn = sqlite3.connect("appliance_store.db")
+#         cur = conn.cursor()
+#         cur.execute("SELECT role FROM users WHERE username=? AND password=?", (username, password))
+#         result = cur.fetchone()
+#         conn.close()
+
+#         if result:
+#             self.user_role = result[0]
+#             self.accept()
+#         else:
+#             QMessageBox.warning(self, "Помилка", "Невірний логін або пароль")
+
+#     def register_user(self):
+#         username = self.username_input.text().strip()
+#         password = self.password_input.text().strip()
+
+#         if not username or not password:
+#             QMessageBox.warning(self, "Помилка", "Будь ласка, введіть логін і пароль")
+#             return
+
+#         conn = sqlite3.connect("appliance_store.db")
+#         cur = conn.cursor()
+#         cur.execute("SELECT * FROM users WHERE username=?", (username,))
+#         if cur.fetchone():
+#             QMessageBox.warning(self, "Помилка", "Користувач з таким логіном вже існує")
+#         else:
+#             cur.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, password, "user"))
+#             conn.commit()
+#             QMessageBox.information(self, "Успіх", "Користувача зареєстровано успішно!")
+#         conn.close()
+
+
+
 class LoginDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Вхід")
-        self.setFixedSize(400, 450)
+        self.setFixedSize(400, 550)
         self.setStyleSheet("""
             QDialog {
                 background-color: #F4E8FF;
@@ -39,10 +162,9 @@ class LoginDialog(QDialog):
 
         main_layout = QVBoxLayout()
 
-        # Додаємо зображення
+        # Зображення
         image_label = QLabel()
         pixmap = QPixmap("logo.jpg")
-        image_label.setPixmap(pixmap.scaledToWidth(150))  # масштабування
         if not pixmap.isNull():
             image_label.setPixmap(pixmap.scaledToWidth(200))
         else:
@@ -50,7 +172,7 @@ class LoginDialog(QDialog):
         image_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(image_label)
 
-        # Привітальний текст
+        # Привітання
         welcome_label = QLabel("🌟 Авторизуйся\nта користуйся перевагами магазину!")
         welcome_label.setAlignment(Qt.AlignCenter)
         welcome_label.setStyleSheet("""
@@ -63,7 +185,6 @@ class LoginDialog(QDialog):
         """)
         main_layout.addWidget(welcome_label)
 
-
         # Форма
         form_layout = QFormLayout()
         self.username_input = QLineEdit()
@@ -72,16 +193,29 @@ class LoginDialog(QDialog):
 
         form_layout.addRow("Логін:", self.username_input)
         form_layout.addRow("Пароль:", self.password_input)
-
-        # Додаємо відступ 1 см після поля пароля
         form_layout.addItem(QSpacerItem(0, 18, QSizePolicy.Minimum, QSizePolicy.Fixed))
+
+        # Нові поля
+        self.name_input = QLineEdit()
+        self.phone_input = QLineEdit()
+        self.name_input.setEnabled(False)
+        self.phone_input.setEnabled(False)
+        self.name_input.setStyleSheet("background-color: #EADCF7;")
+        self.phone_input.setStyleSheet("background-color: #EADCF7;")
+
+        self.new_user_checkbox = QCheckBox("Новий користувач")
+        self.new_user_checkbox.setChecked(False)
+        self.new_user_checkbox.stateChanged.connect(self.toggle_new_user_fields)
+
+        form_layout.addRow("Ім’я:", self.name_input)
+        form_layout.addRow("Телефон:", self.phone_input)
+        form_layout.addRow("", self.new_user_checkbox)
 
         # Кнопки
         self.login_btn = QPushButton("Увійти")
         self.register_btn = QPushButton("Реєстрація")
         self.login_btn.setFixedSize(120, 40)
         self.register_btn.setFixedSize(120, 40)
-
         self.login_btn.clicked.connect(self.try_login)
         self.register_btn.clicked.connect(self.register_user)
 
@@ -94,11 +228,21 @@ class LoginDialog(QDialog):
         buttons_layout.addSpacing(10)
 
         form_layout.addRow("", buttons_layout)
-
         main_layout.addLayout(form_layout)
+
         self.setLayout(main_layout)
         self.user_role = None
 
+    def toggle_new_user_fields(self):
+        is_checked = self.new_user_checkbox.isChecked()
+        self.name_input.setEnabled(is_checked)
+        self.phone_input.setEnabled(is_checked)
+        if is_checked:
+            self.name_input.setStyleSheet("")
+            self.phone_input.setStyleSheet("")
+        else:
+            self.name_input.setStyleSheet("background-color: #eeeeee;")
+            self.phone_input.setStyleSheet("background-color: #eeeeee;")
 
     def try_login(self):
         username = self.username_input.text().strip()
@@ -119,6 +263,8 @@ class LoginDialog(QDialog):
     def register_user(self):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
+        name = self.name_input.text().strip()
+        phone = self.phone_input.text().strip()
 
         if not username or not password:
             QMessageBox.warning(self, "Помилка", "Будь ласка, введіть логін і пароль")
@@ -126,28 +272,36 @@ class LoginDialog(QDialog):
 
         conn = sqlite3.connect("appliance_store.db")
         cur = conn.cursor()
+
         cur.execute("SELECT * FROM users WHERE username=?", (username,))
         if cur.fetchone():
             QMessageBox.warning(self, "Помилка", "Користувач з таким логіном вже існує")
         else:
-            cur.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, password, "user"))
-            conn.commit()
-            QMessageBox.information(self, "Успіх", "Користувача зареєстровано успішно!")
+            try:
+                cur.execute("""
+                    INSERT INTO users (username, password, role, name, phone)
+                    VALUES (?, ?, 'user', ?, ?)
+                """, (username, password, name, phone))
+                conn.commit()
+                QMessageBox.information(self, "Успіх", "Користувача зареєстровано успішно!")
+            except sqlite3.OperationalError as e:
+                QMessageBox.critical(self, "Помилка", f"SQL-помилка: {e}")
         conn.close()
+
 
 
 class MainWindow(QMainWindow):
     def __init__(self, role):
         super().__init__()
         self.setWindowTitle("Магазин побутової техніки")
-        self.setGeometry(100, 100, 1300, 600)
+        self.setGeometry(100, 100, 1300, 800)
         self.user_role = role
 
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabPosition(QTabWidget.West)
         self.tab_widget.setStyleSheet("""
             QTabBar::tab {
-                background: #D8BFD8;              /* світло-бузковий */
+                background: #D8BFD8;       
                 color: black;
                 border: 1px solid #A9A9A9;
                 padding: 5px 5px;
@@ -160,7 +314,7 @@ class MainWindow(QMainWindow):
             }
 
             QTabBar::tab:selected {
-                background: #9370DB;              /* активна вкладка - темніший бузковий */
+                background: #9370DB;     
                 color: white;
             }
 

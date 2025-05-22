@@ -31,7 +31,7 @@ class PaymentsTab(QWidget):
         ])
         style_table(self.table)
         self.table.setColumnWidth(0, 150) 
-        self.table.setColumnWidth(1, 200)  # назва
+        self.table.setColumnWidth(1, 200) 
         self.table.setColumnWidth(2, 100)  
         self.table.setColumnWidth(3, 100) 
         self.table.setColumnWidth(4, 150)
